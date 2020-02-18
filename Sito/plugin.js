@@ -70,6 +70,53 @@ class Structular {
 
 var struct = new Structular();
 
+
+/*
+MEANING, FIX, STYLE, EDITCHAIN, EDITWAR, EDITWAKE
+*/
+class Semantic {
+  constructor(){
+    this.stackSem = [];
+    this.editSem = 0;
+  }
+
+  insStack(op, old, nw, by, listStruct){
+    struct.insStack("NOOP", "Francesco");
+
+    var item = {
+      "id": "sem-" + sanitizeID(this.editSem),
+      "op": op,
+      "old": old,
+      "new": nw,
+      "items": []
+    };
+
+    listStruct.forEach((i) => {
+      item.items.push(struct.retItem(i));
+    });
+
+    this.stackSem.push(item);
+
+    this.editSem++;
+  }
+
+  get stack(){ return(this.stackSem);}
+}
+
+var sem = new Semantic();
+
+
+function test(){
+  var by = "Francesco";
+  mech.insStack("DEL", 2343, "pero", by);
+  mech.insStack("DEL", 446, "melo", by);
+
+  struct.insStack("NOOP",by,[0,1]);
+
+  return struct.stack;
+}
+
+
 tinymce.PluginManager.add('example', function(editor, url) {
   var openDialog = function () {
     return editor.windowManager.open({
