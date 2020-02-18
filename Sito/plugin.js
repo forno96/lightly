@@ -16,7 +16,7 @@ class Mechanical {
   }
 
   insStack(op, pos, content, by){
-    this.stackMech.unshift({
+    this.stackMech.push({
       "id": "mech-" + sanitizeID(this.editMech),
       "op": op,
       "pos": pos,
@@ -28,7 +28,8 @@ class Mechanical {
     this.editMech++;
   }
 
-  get retStack(){ return(this.stackMech);}
+  get stack(){ return(this.stackMech);}
+  retItem(i){ return(this.stackMech[i]);}
 
   resetStack(){this.stackMech = [];}
 }
@@ -45,26 +46,26 @@ class Structular {
     this.editStruct = 0;
   }
 
-  insStack(op, by){
-    /*mech.insStack("DEL",23,"ciao","Francesco");
-    mech.insStack("DEL",23,"ciao","Francesco");*/
-
+  insStack(op, by, listMech){
     var item = {
       "id": "struct-" + sanitizeID(this.editStruct),
       "op": op,
       "by": by,
       "timestamp": getTime(),
       "items": []
-    }
+    };
 
-    item.items = mech.retStack[0]
+    listMech.forEach((i) => {
+      item.items.push(mech.retItem(i));
+    });
 
-    this.stackStruct.unshift(item);
+    this.stackStruct.push(item);
 
     this.editStruct++;
   }
 
-  get retStack(){ return(this.stackStruct);}
+  get stack(){ return(this.stackStruct);}
+  retItem(i) {return(this.stackStruct[i]);}
 }
 
 var struct = new Structular();
