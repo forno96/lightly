@@ -161,6 +161,7 @@ tinymce.PluginManager.add('example', function(editor, url) {
   editor.ui.registry.addButton('example', {
     text: 'My bottone',
     onAction: function () {
+      console.log(test());
       // Open window
       openDialog();
     }
@@ -183,13 +184,4 @@ tinymce.PluginManager.add('example', function(editor, url) {
       };
     }
   };
-});
-
-tinymce.init({
-  selector: 'textarea',
-  plugins: 'example',
-  toolbar: 'example a11ycheck addcomment showcomments casechange checklist code formatpainter insertfile pageembed permanentpen table',
-  toolbar_drawer: 'floating',
-  tinycomments_mode: 'embedded',
-  tinycomments_author: 'Author name'
 });
