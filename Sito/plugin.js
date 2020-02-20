@@ -7,8 +7,11 @@ function sanitizeID(value){
   return ret + value;
 }
 
-function getTime(){ return (new Date().getTime());}
+function getTime(){ return (new Date().toJSON());}
 
+/*
+INS, DEL
+*/
 class Mechanical {
   constructor(){
     this.editMech = 0;
@@ -34,7 +37,6 @@ class Mechanical {
   resetStack(){this.stackMech = [];}
 }
 
-var mech = new Mechanical();
 
 /*
 NOOP, WRAP/UNWRAP, JOIN/SPLIT, REPLACE, INSERT/DELETE,
@@ -46,10 +48,12 @@ class Structular {
     this.editStruct = 0;
   }
 
-  insStack(op, by, listMech){
+  insStack(op, by, mech, listMech, old, nw){
     var item = {
       "id": "struct-" + sanitizeID(this.editStruct),
       "op": op,
+      "old": old,
+      "new": nw,
       "by": by,
       "timestamp": getTime(),
       "items": []
@@ -68,8 +72,6 @@ class Structular {
   retItem(i) {return(this.stackStruct[i]);}
 }
 
-var struct = new Structular();
-
 
 /*
 MEANING, FIX, STYLE, EDITCHAIN, EDITWAR, EDITWAKE
@@ -80,8 +82,7 @@ class Semantic {
     this.editSem = 0;
   }
 
-  insStack(op, old, nw, by, listStruct){
-    struct.insStack("NOOP", "Francesco");
+  insStack(op, by, struct, listStruct, old, nw){
 
     var item = {
       "id": "sem-" + sanitizeID(this.editSem),
@@ -103,17 +104,22 @@ class Semantic {
   get stack(){ return(this.stackSem);}
 }
 
-var sem = new Semantic();
-
 
 function test(){
   var by = "Francesco";
-  mech.insStack("DEL", 2343, "pero", by);
-  mech.insStack("DEL", 446, "melo", by);
 
-  struct.insStack("NOOP",by,[0,1]);
+  var mech = new Mechanical();
+  var struct = new Structular();
+  var sem = new Semantic();
 
-  return struct.stack;
+  mech.insStack("DEL", 2343, "nuovo", by);
+  mech.insStack("DEL", 446, "</p><p>", by);
+
+  struct.insStack("NOOP", by, mech, [0,1]);
+
+  sem.insStack("MEANING", by, struct, [0]);
+
+  return sem.stack;
 }
 
 
