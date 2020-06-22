@@ -1,8 +1,19 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <script src="https://cdn.tiny.cloud/1/eehv0o2s7q0gy2u9nq7kqroftiquea4fyvsv33c9lskr23yr/tinymce/5/tinymce.min.js" referrerpolicy="origin"></script>
+  <!--<script src="https://cdn.tiny.cloud/1/eehv0o2s7q0gy2u9nq7kqroftiquea4fyvsv33c9lskr23yr/tinymce/5/tinymce.min.js" referrerpolicy="origin"></script>-->
+  <script src="./tinymce.min.js"></script>
   <script src="./plugin.js"></script>
+  <script type="text/javascript">
+    tinymce.init({
+      selector: 'textarea',
+      plugins: 'example',
+      toolbar: 'example a11ycheck addcomment showcomments casechange checklist code formatpainter insertfile pageembed permanentpen table',
+      toolbar_drawer: 'floating',
+      tinycomments_mode: 'embedded',
+      tinycomments_author: 'Author name'
+    });
+  </script>
 </head>
 <body>
   <textarea>
@@ -10,4 +21,3 @@
   </textarea>
 </body>
 </html>
-  
