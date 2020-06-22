@@ -38,5 +38,6 @@ jobs:
         username: francesco.fornari2@studio.unibo.it
         server: arianna.cs.unibo.it
         private_key: ${{ secrets.SSH_PRIVATE_KEY }}
+        local_path: /Sito/
         remote_path: /home/web/site181980/html
 
