@@ -1,12 +1,9 @@
 function sanitizeID(value){
   var tmp = value.toFixed().length;
   var ret = '';
-
   for (var i = 5; i > tmp; i--) {ret += '0';}
-
   return ret + value;
 }
-
 function getTime(){ return (new Date().toJSON());}
 
 /*
@@ -36,7 +33,6 @@ class Mechanical {
 
   resetStack(){this.stackMech = [];}
 }
-
 
 /*
 NOOP, WRAP/UNWRAP, JOIN/SPLIT, REPLACE, INSERT/DELETE,
@@ -72,7 +68,6 @@ class Structular {
   retItem(i) {return(this.stackStruct[i]);}
 }
 
-
 /*
 MEANING, FIX, STYLE, EDITCHAIN, EDITWAR, EDITWAKE
 */
@@ -104,6 +99,35 @@ class Semantic {
   get stack(){ return(this.stackSem);}
 }
 
+/* ----- */
+const delay = ms => new Promise(res => setTimeout(res, ms));
+
+async function checkChange(){
+  await delay(2000);
+  while (true) {
+    change();
+    await delay(2000);
+  }
+}
+
+oldState = undefined;
+function change(){
+  newState = tinyMCE.activeEditor.iframeElement.contentDocument.getElementsByTagName('body')[0].innerHTML
+
+  if (oldState == undefined) {
+    oldState = newState
+    console.log(`State Loaded    |  ${oldState}`)
+  }
+  else if (oldState != newState) {
+    // prendo differenze tra il body vecchio e nuovo
+    oldState = newState
+    console.log(`State Changed   |  ${oldState}`)
+    //console.log(oldState)
+  }
+  else {
+    console.log(`State Unchanged |  ${oldState}`)
+  }
+}
 
 function test(){
   var by = "Francesco";
