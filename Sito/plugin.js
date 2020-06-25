@@ -29,10 +29,10 @@ class Mechanical {
     return (this.editMech -1);
   }
 
-  get stack(){ return(this.stackMech);}
-  retItem(i){ return(this.stackMech[i]);}
+  get stack() { return(this.stackMech); }
+  retItem(i)  { return(this.stackMech[i]); }
 
-  resetStack(){this.stackMech = [];}
+  remStack(i) { return(this.stackMech.splice(i,i)); }
 }
 
 /*
