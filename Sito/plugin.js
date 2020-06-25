@@ -26,6 +26,7 @@ class Mechanical {
     });
 
     this.editMech++;
+    return (this.editMech -1);
   }
 
   get stack(){ return(this.stackMech);}
@@ -62,6 +63,7 @@ class Structular {
     this.stackStruct.push(item);
 
     this.editStruct++;
+    return (this.editStruct -1);
   }
 
   get stack(){ return(this.stackStruct);}
@@ -94,39 +96,66 @@ class Semantic {
     this.stackSem.push(item);
 
     this.editSem++;
+    return (this.editSem -1)
   }
 
   get stack(){ return(this.stackSem);}
 }
 
 /* ----- */
+// INIT CLASS and VAR
+oldState = undefined;
+var by = "Francesco";
+var mech = new Mechanical();
+//var struct = new Structular();
+//var sem = new Semantic();
+
 const delay = ms => new Promise(res => setTimeout(res, ms));
 
 async function checkChange(){
   await delay(2000);
   while (true) {
-    change();
+    catchChange();
     await delay(2000);
   }
 }
 
-oldState = undefined;
-function change(){
-  newState = tinyMCE.activeEditor.iframeElement.contentDocument.getElementsByTagName('body')[0].innerHTML
+function catchChange(){
+  newState = tinyMCE.activeEditor.iframeElement.contentDocument.getElementsByTagName('body')[0].innerHTML.split("<");
+  newState.forEach((item, i) => {if (item != "") newState[i] = "<" + item});
+  //console.log(newState)
 
   if (oldState == undefined) {
-    oldState = newState
-    console.log(`State Loaded    |  ${oldState}`)
+    oldState = newState;
+    console.log(`State Loaded    |  ${oldState}`);
   }
-  else if (oldState != newState) {
-    // prendo differenze tra il body vecchio e nuovo
-    oldState = newState
-    console.log(`State Changed   |  ${oldState}`)
-    //console.log(oldState)
+
+  lenN = 0;
+  lenO = 0;
+  lenOfChange = 0;
+  posOfChange = 0;
+
+  newState.forEach((item, i) => {
+    lenN += newState[i].length;
+    if (oldState.length>i) lenO += oldState[i].length;
+    if (newState[i] != oldState[i]){
+      lenOfChange = lenN;
+      posOfChange = i;
+      //console.log(`${oldState[i]} CHANGED IN ${newState[i]}`);
+    }
+  });
+
+  if (lenO > lenN) {
+    console.log(`State Changed   |  ${newState}`);
+    mech.insStack("DEL", lenOfChange, newState[posOfChange], by);
   }
-  else {
-    console.log(`State Unchanged |  ${oldState}`)
+  else if (lenO < lenN) {
+    console.log(`State Changed   |  ${newState}`);
+    mech.insStack("INS", lenOfChange, newState[posOfChange], by);
   }
+  else console.log(`State Unchanged |  ${oldState}`);
+
+  oldState = newState;
 }
 
 function test(){
