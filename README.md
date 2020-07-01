@@ -4,7 +4,8 @@
 
 ### Stato della tesi: In Sviluppo
 
-
+	1 Luglio: Aggiunta del revert
+	
 	24 Giugno: Ottenimento dell'interno del documento in formato HTML
     
 	12 Giugno: Colloquio col professore per definire passi e svliuppi
