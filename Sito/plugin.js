@@ -15,7 +15,7 @@ class Mechanical {
     this.stackMech = [];
   }
 
-  insStack(op, pos, content, by){
+  insItem(op, pos, content, by){
     this.stackMech.push({
       "id": "mech-" + sanitizeID(this.editMech),
       "op": op,
@@ -32,7 +32,7 @@ class Mechanical {
   get stack() { return(this.stackMech); }
   retItem(i)  { return(this.stackMech[i]); }
 
-  remStack(i) { return(this.stackMech.splice(i,i)); }
+  remItem(i) { return(this.stackMech.splice(i,1)); }
 }
 
 /*
@@ -45,7 +45,7 @@ class Structular {
     this.editStruct = 0;
   }
 
-  insStack(op, by, mech, listMech, old, nw){
+  insItem(op, by, mech, listMech, old, nw){
     var item = {
       "id": "struct-" + sanitizeID(this.editStruct),
       "op": op,
@@ -79,7 +79,7 @@ class Semantic {
     this.editSem = 0;
   }
 
-  insStack(op, by, struct, listStruct, old, nw){
+  insItem(op, by, struct, listStruct, old, nw){
 
     var item = {
       "id": "sem-" + sanitizeID(this.editSem),
@@ -120,14 +120,23 @@ async function checkChange(){
   }
 }
 
+function createState(){
+  state = tinyMCE.activeEditor.iframeElement.contentDocument.getElementsByTagName('body')[0].innerHTML.split("<");
+  state.forEach((item, i) => {if (item != "") state[i] = "<" + item;});
+  return(state)
+}
+
+function loadState(state){
+  oldState = state;
+  tinyMCE.activeEditor.iframeElement.contentDocument.getElementsByTagName('body')[0].innerHTML = oldState.join("")
+}
+
 function catchChange(){
-  newState = tinyMCE.activeEditor.iframeElement.contentDocument.getElementsByTagName('body')[0].innerHTML.split("<");
-  newState.forEach((item, i) => {if (item != "") newState[i] = "<" + item});
-  //console.log(newState)
+  newState = createState();
 
   if (oldState == undefined) {
     oldState = newState;
-    console.log(`State Loaded    |  ${oldState}`);
+    console.log(`State Loaded     |  ${oldState}`);
   }
 
   lenN = 0;
@@ -145,17 +154,34 @@ function catchChange(){
     }
   });
 
-  if (lenO > lenN) {
-    console.log(`State Changed   |  ${newState}`);
-    mech.insStack("DEL", lenOfChange, newState[posOfChange], by);
+  if (lenO != lenN) {
+    console.log(`State Changed    |  ${newState}`);
+    mech.insItem("DEL", lenOfChange, oldState[posOfChange], by);
+    mech.insItem("INS", lenOfChange, newState[posOfChange], by);
   }
-  else if (lenO < lenN) {
-    console.log(`State Changed   |  ${newState}`);
-    mech.insStack("INS", lenOfChange, newState[posOfChange], by);
-  }
-  else console.log(`State Unchanged |  ${oldState}`);
+  else console.log(`State Unchanged  |  ${oldState}`);
 
   oldState = newState;
+}
+
+function revertChange(){
+  if (mech.stack.length == 0) return(false);
+
+  var i = mech.stack.length;
+  do { i --;
+  } while ((i>0) && !((mech.retItem(i).op == "INS") && (mech.retItem(i-1).op == "DEL")));
+
+  if ((mech.retItem(i).op == "INS") && (mech.retItem(i-1).op == "DEL")) {
+    removeIt = mech.remItem(i)[0];
+
+    newState = createState();
+    index = newState.findIndex((element) => {
+      return(element == removeIt.content);
+    });
+
+    newState[index] = mech.remItem(i-1)[0].content;
+    loadState(newState);
+  }
 }
 
 function test(){
@@ -165,69 +191,25 @@ function test(){
   var struct = new Structular();
   var sem = new Semantic();
 
-  mech.insStack("DEL", 2343, "nuovo", by);
-  mech.insStack("DEL", 446, "</p><p>", by);
+  mech.insItem("DEL", 2343, "nuovo", by);
+  mech.insItem("DEL", 446, "</p><p>", by);
 
-  struct.insStack("NOOP", by, mech, [0,1]);
+  struct.insItem("NOOP", by, mech, [0,1]);
 
-  sem.insStack("MEANING", by, struct, [0]);
+  sem.insItem("MEANING", by, struct, [0]);
 
   return sem.stack;
 }
 
 
 tinymce.PluginManager.add('example', function(editor, url) {
-  var openDialog = function () {
-    return editor.windowManager.open({
-      title: 'Example plugin',
-      body: {
-        type: 'panel',
-        items: [
-          {
-            type: 'input',
-            name: 'title',
-            label: 'Title'
-          }
-        ]
-      },
-      buttons: [
-        {
-          type: 'cancel',
-          text: 'Close'
-        },
-        {
-          type: 'submit',
-          text: 'Save',
-          primary: true
-        }
-      ],
-      onSubmit: function (api) {
-        var data = api.getData();
-        // Insert content when the window form is submitted
-        editor.insertContent('Title: ' + data.title);
-        api.close();
-      }
-    });
-  };
-
   // Add a button that opens a window
   editor.ui.registry.addButton('example', {
-    text: 'My bottone',
+    text: 'Revert',
     onAction: function () {
-      console.log(test());
-      // Open window
-      openDialog();
+      revertChange();
     }
   });
-
-  // Adds a menu item, which can then be included in any menu via the menu/menubar configuration
-  /*editor.ui.registry.addMenuItem('example', {
-    text: 'Example plugin',
-    onAction: function() {
-      // Open window
-      openDialog();
-    }
-  });*/
 
   return {
     getMetadata: function () {
