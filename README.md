@@ -4,6 +4,8 @@
 
 ### Stato della tesi: In Sviluppo
 
+	3 Luglio: Adesso il catch del cambiamento è molto più granulare, aggiunta del redo
+	
 	1 Luglio: Aggiunta del revert
 	
 	24 Giugno: Ottenimento dell'interno del documento in formato HTML
