@@ -30,9 +30,8 @@ class Mechanical {
   }
 
   get stack() { return(this.stackMech); }
-  retItem(i)  { return(this.stackMech[i]); }
 
-  remItem(i) { return(this.stackMech.splice(i,1)); }
+  remItem(i) { return(this.stackMech.splice(i,1)[0]);}
 }
 
 /*
@@ -113,75 +112,70 @@ var mech = new Mechanical();
 const delay = ms => new Promise(res => setTimeout(res, ms));
 
 async function checkChange(){
-  await delay(2000);
+  await delay(300);   // Per dare il tempo a tinyMCE di caricarsi
   while (true) {
     catchChange();
-    await delay(2000);
+    await delay(700); // Ogni quanto va rilanciata
   }
 }
 
-function createState(){
-  state = tinyMCE.activeEditor.iframeElement.contentDocument.getElementsByTagName('body')[0].innerHTML.split("<");
-  state.forEach((item, i) => {if (item != "") state[i] = "<" + item;});
+function catchState(){
+  state = tinyMCE.activeEditor.iframeElement.contentDocument.getElementsByTagName('body')[0].innerHTML;
   return(state)
 }
 
 function loadState(state){
-  oldState = state;
-  tinyMCE.activeEditor.iframeElement.contentDocument.getElementsByTagName('body')[0].innerHTML = oldState.join("")
+  oldState = tinyMCE.activeEditor.iframeElement.contentDocument.getElementsByTagName('body')[0].innerHTML = state;
 }
 
 function catchChange(){
-  newState = createState();
+  newState = catchState();
 
   if (oldState == undefined) {
     oldState = newState;
     console.log(`State Loaded     |  ${oldState}`);
+    return (false);
   }
 
-  lenN = 0;
-  lenO = 0;
-  lenOfChange = 0;
-  posOfChange = 0;
+  var start = 0;
+  var newEnd = newState.length -1;
+  var oldEnd = oldState.length -1;
+  while (start < newState.length && newState[start] == oldState[start]) start ++;
+  //console.log(start,newState[start],oldState[start])
+  while (newEnd > start && newState[newEnd] == oldState[oldEnd]) {// se old < new
+    newEnd --;
+    oldEnd --;
+  }
 
-  newState.forEach((item, i) => {
-    lenN += newState[i].length;
-    if (oldState.length>i) lenO += oldState[i].length;
-    if (newState[i] != oldState[i]){
-      lenOfChange = lenN;
-      posOfChange = i;
-      //console.log(`${oldState[i]} CHANGED IN ${newState[i]}`);
-    }
-  });
+  //console.log(newEnd,newState[newEnd],oldEnd,oldState[oldEnd])
 
-  if (lenO != lenN) {
+  if (start < newState.length) { // Se c'è stato un cambiamento
     console.log(`State Changed    |  ${newState}`);
-    mech.insItem("DEL", lenOfChange, oldState[posOfChange], by);
-    mech.insItem("INS", lenOfChange, newState[posOfChange], by);
+    mech.insItem("DEL", start, oldState.slice(start,oldEnd+1), by);
+    mech.insItem("INS", start, newState.slice(start,newEnd+1), by);
   }
   else console.log(`State Unchanged  |  ${oldState}`);
 
   oldState = newState;
 }
 
-function revertChange(){
-  if (mech.stack.length == 0) return(false);
+function revertChange() {
+  if (mech.stack.length == 0) return (false); // Se la pila è vuota revert non deve fare nulla
 
-  var i = mech.stack.length;
-  do { i --;
-  } while ((i>0) && !((mech.retItem(i).op == "INS") && (mech.retItem(i-1).op == "DEL")));
+  state = catchState();
 
-  if ((mech.retItem(i).op == "INS") && (mech.retItem(i-1).op == "DEL")) {
-    removeIt = mech.remItem(i)[0];
-
-    newState = createState();
-    index = newState.findIndex((element) => {
-      return(element == removeIt.content);
-    });
-
-    newState[index] = mech.remItem(i-1)[0].content;
-    loadState(newState);
+  for (var i = 0; i < 2; i++) {
+    item = mech.remItem(mech.stackMech.length-1);
+    //console.log(item);
+    if (item.op == "INS") {
+      state = state.slice(0,item.pos) + state.slice(item.pos + item.content.length);
+    }
+    else { // se op è DEL
+      state = state.slice(0,item.pos) + item.content + state.slice(item.pos);
+    }
   }
+
+  loadState(state);
 }
 
 function test(){
