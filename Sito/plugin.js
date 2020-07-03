@@ -13,6 +13,7 @@ class Mechanical {
   constructor(){
     this.editMech = 0;
     this.stackMech = [];
+    this.revertedMech = [];
   }
 
   insItem(op, pos, content, by){
@@ -30,8 +31,16 @@ class Mechanical {
   }
 
   get stack() { return(this.stackMech); }
+  get revertedstack() {return(this.revertedMech);}
 
-  remItem(i) { return(this.stackMech.splice(i,1)[0]);}
+  remItem(i) {
+    var item = this.stackMech.splice(i,1)[0];
+    this.revertedMech.push(item);
+    return(item);
+  }
+
+  remRevert(i){ return(this.revertedMech.splice(i,1)[0]); }
+  emptyRevertedMech() {this.revertedMech = [];}
 }
 
 /*
@@ -153,14 +162,15 @@ function catchChange(){
     console.log(`State Changed    |  ${newState}`);
     mech.insItem("DEL", start, oldState.slice(start,oldEnd+1), by);
     mech.insItem("INS", start, newState.slice(start,newEnd+1), by);
+    mech.emptyRevertedMech();   // Se si fanno delle modifiche la coda con gli undo annulati va svuotata
   }
   else console.log(`State Unchanged  |  ${oldState}`);
 
   oldState = newState;
 }
 
-function revertChange() {
-  if (mech.stack.length == 0) return (false); // Se la pila è vuota revert non deve fare nulla
+function undoChange() {
+  if (mech.stack.length == 0) return (false); // Se la pila è vuota undoChange non deve fare nulla
 
   state = catchState();
 
@@ -175,6 +185,26 @@ function revertChange() {
     }
   }
 
+  loadState(state);
+}
+
+function redoChange() {
+  if (mech.revertedstack.length == 0) return (false); // Se la pila è vuota revert non deve fare nulla
+
+  state = catchState();
+
+  for (var i = 0; i < 2; i++) {
+    item = mech.remRevert(mech.revertedstack.length-1);
+    //console.log(item);
+    if (item.op == "INS") {
+      state = state.slice(0,item.pos) + item.content + state.slice(item.pos);
+      mech.insItem("INS", item.pos, item.content, item.by);
+    }
+    else { // se op è DEL
+      state = state.slice(0,item.pos) + state.slice(item.pos + item.content.length);
+      mech.insItem("DEL", item.pos, item.content, item.by);
+    }
+  }
   loadState(state);
 }
 
@@ -198,10 +228,17 @@ function test(){
 
 tinymce.PluginManager.add('example', function(editor, url) {
   // Add a button that opens a window
-  editor.ui.registry.addButton('example', {
-    text: 'Revert',
+  editor.ui.registry.addButton('Custom-Undo', {
+    text: 'Undo',
     onAction: function () {
-      revertChange();
+      undoChange();
+    }
+  });
+
+  editor.ui.registry.addButton('Custom-Redo', {
+    text: 'Redo',
+    onAction: function () {
+      redoChange();
     }
   });
 
