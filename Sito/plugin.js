@@ -121,28 +121,29 @@ var mech = new Mechanical();
 const delay = ms => new Promise(res => setTimeout(res, ms));
 
 async function checkChange(){
-  await delay(300);   // Per dare il tempo a tinyMCE di caricarsi
   while (true) {
-    catchChange();
-    await delay(700); // Ogni quanto va rilanciata
+    try { await catchChange(); }
+    catch(err) { await delay(200); } // Per dare il tempo a tinyMCE di caricarsi, err sta perchè è supportato solo da ES10
+    await delay(800); // Ogni quanto va rilanciata
   }
 }
 
 function catchState(){
   state = tinyMCE.activeEditor.iframeElement.contentDocument.getElementsByTagName('body')[0].innerHTML;
-  return(state)
+  return(state);
 }
 
 function loadState(state){
   oldState = tinyMCE.activeEditor.iframeElement.contentDocument.getElementsByTagName('body')[0].innerHTML = state;
 }
 
-function catchChange(){
+function catchChange(){ // E' da far cercare il cambiamento solo all'interno di un range definito
+  //console.log("inizio: " + getTime());
   newState = catchState();
 
   if (oldState == undefined) {
     oldState = newState;
-    console.log(`State Loaded     |  ${oldState}`);
+    console.log('State Loaded');
     return (false);
   }
 
@@ -156,8 +157,6 @@ function catchChange(){
     oldEnd --;
   }
 
-  //console.log(newEnd,newState[newEnd],oldEnd,oldState[oldEnd])
-
   if (start < newState.length) { // Se c'è stato un cambiamento
     // da inserire il le modifiche di tipo strutturale 
     console.log(`State Changed    | "${oldState.slice(start,oldEnd+1)}" into "${newState.slice(start,newEnd+1)}"`);
@@ -165,70 +164,67 @@ function catchChange(){
     mech.insItem("INS", start, newState.slice(start,newEnd+1), by);
     mech.emptyRevertedMech();   // Se si fanno delle modifiche la coda con gli undo annulati va svuotata
   }
-  else console.log(`State Unchanged  |  ${oldState}`);
+  else console.log('State Unchanged');
 
   oldState = newState;
+  //console.log("fine: " + getTime());
 }
 
 function undoChange() {
-  if (mech.stack.length == 0) return (false); // Se la pila è vuota undoChange non deve fare nulla
+  if (mech.stack.length == 0) { // Se la pila è vuota undoChange non deve fare nulla
+    console.log("Undo stack is empty");
+    return (false);
+  }
 
   state = catchState();
+  var add, rem;
 
   for (var i = 0; i < 2; i++) {
     item = mech.remItem(mech.stackMech.length-1);
-    //console.log(item);
-    if (item.op == "INS") {
+    if (item.op == "INS") { // se op è INS toglie
       state = state.slice(0,item.pos) + state.slice(item.pos + item.content.length);
+      rem = item.content;
     }
-    else { // se op è DEL
+    else { // se op è DEL aggiunge
       state = state.slice(0,item.pos) + item.content + state.slice(item.pos);
+      add = item.content;
     }
   }
 
+  console.log(`Added ${add} and Removed ${rem}`);
   loadState(state);
+  console.log("Undo Done");
 }
 
 function redoChange() {
-  if (mech.revertedstack.length == 0) return (false); // Se la pila è vuota revert non deve fare nulla
+  if (mech.revertedstack.length == 0) { // Se la pila è vuota redoChange non deve fare nulla
+    console.log("Redo stack is empty");
+    return (false);
+  }
 
   state = catchState();
+  var add, rem;
 
   for (var i = 0; i < 2; i++) {
     item = mech.remRevert(mech.revertedstack.length-1);
-    //console.log(item);
-    if (item.op == "INS") {
+    if (item.op == "INS") { // se op è INS aggiunge
       state = state.slice(0,item.pos) + item.content + state.slice(item.pos);
       mech.insItem("INS", item.pos, item.content, item.by);
+      add = item.content;
     }
-    else { // se op è DEL
+    else { // se op è DEL toglie
       state = state.slice(0,item.pos) + state.slice(item.pos + item.content.length);
       mech.insItem("DEL", item.pos, item.content, item.by);
+      rem = item.content;
     }
   }
+
+  console.log(`Added ${add} and Removed ${rem}`);
   loadState(state);
+  console.log("Redo Done");
 }
 
-function test(){
-  var by = "Francesco";
-
-  var mech = new Mechanical();
-  var struct = new Structular();
-  var sem = new Semantic();
-
-  mech.insItem("DEL", 2343, "nuovo", by);
-  mech.insItem("DEL", 446, "</p><p>", by);
-
-  struct.insItem("NOOP", by, mech, [0,1]);
-
-  sem.insItem("MEANING", by, struct, [0]);
-
-  return sem.stack;
-}
-
-
-tinymce.PluginManager.add('example', function(editor, url) {
-  // Add a button that opens a window
+tinymce.PluginManager.add('UndoStack', function(editor, url) {
   editor.ui.registry.addButton('Custom-Undo', {
     text: 'Undo',
     onAction: function () {
@@ -252,3 +248,36 @@ tinymce.PluginManager.add('example', function(editor, url) {
     }
   };
 });
+
+checkChange();
+
+
+async function go(){
+  var letter = 'a';
+  for (var i = 0; i<26; i++){
+    for (var j=0; j<50; j++){
+      state = tinyMCE.activeEditor.iframeElement.contentDocument.getElementsByTagName('body')[0].innerHTML;
+      tinyMCE.activeEditor.iframeElement.contentDocument.getElementsByTagName('body')[0].innerHTML =  state.slice(0,state.length-4) + letter + '</p>';
+      await delay(50);
+    }
+    //console.log(letter+letter+letter+letter+letter);
+    letter = String.fromCharCode(letter.charCodeAt(0) + 1);
+  }
+}
+
+function test(){
+  var by = "Francesco";
+
+  var mech = new Mechanical();
+  var struct = new Structular();
+  var sem = new Semantic();
+
+  mech.insItem("DEL", 2343, "nuovo", by);
+  mech.insItem("DEL", 446, "</p><p>", by);
+
+  struct.insItem("NOOP", by, mech, [0,1]);
+
+  sem.insItem("MEANING", by, struct, [0]);
+
+  return sem.stack;
+}
