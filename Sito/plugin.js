@@ -149,9 +149,9 @@ function catchChange(){
   var start = 0;
   var newEnd = newState.length -1;
   var oldEnd = oldState.length -1;
-  while (start < newState.length && newState[start] == oldState[start]) start ++;
-  //console.log(start,newState[start],oldState[start])
-  while (newEnd > start && newState[newEnd] == oldState[oldEnd]) {// se old < new
+  while ((start < newState.length) && (newState[start] == oldState[start])) start ++;
+  while ((newEnd > start) && (newState[newEnd] == oldState[oldEnd]) && (oldState[start-1] != oldState[oldEnd])) { // se c'è stato quache cambiamento allora è probabile che la lunghezza cambia
+    // l'ultimo controllo serve se si hanno la fine e l'inizio con la stessa lettera, perchè non li conterebbe
     newEnd --;
     oldEnd --;
   }
@@ -159,7 +159,8 @@ function catchChange(){
   //console.log(newEnd,newState[newEnd],oldEnd,oldState[oldEnd])
 
   if (start < newState.length) { // Se c'è stato un cambiamento
-    console.log(`State Changed    |  ${newState}`);
+    // da inserire il le modifiche di tipo strutturale 
+    console.log(`State Changed    | "${oldState.slice(start,oldEnd+1)}" into "${newState.slice(start,newEnd+1)}"`);
     mech.insItem("DEL", start, oldState.slice(start,oldEnd+1), by);
     mech.insItem("INS", start, newState.slice(start,newEnd+1), by);
     mech.emptyRevertedMech();   // Se si fanno delle modifiche la coda con gli undo annulati va svuotata
