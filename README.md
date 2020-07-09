@@ -4,20 +4,25 @@
 
 ### Stato della tesi: In Sviluppo
 
-	3 Luglio: Adesso il catch del cambiamento è molto più granulare, aggiunta del redo
+	9 Luglio: La cattura del cambiamento dava dei problemi, negli scorsi giorni
+	ho provato a correggerlo con varie mtodologie, ora prende le differenze in modo esatto,
+	anche se forse l'utilizzio di tecniche più avanzate sarebbe più corretto.
+	Proverò ad implementare una nuova soluzione.
 	
-	1 Luglio: Aggiunta del revert
+	3 Luglio: Adesso il catch del cambiamento è molto più granulare, aggiunta del redo.
 	
-	24 Giugno: Ottenimento dell'interno del documento in formato HTML
+	1 Luglio: Aggiunta del revert.
+	
+	24 Giugno: Ottenimento dell'interno del documento in formato HTML.
     
-	12 Giugno: Colloquio col professore per definire passi e svliuppi
+	12 Giugno: Colloquio col professore per definire passi e svliuppi:
 		È necessario acere uno spazio web dedicato deove mettere il test del sito
 		Bisogna salvare le modifiche utilizzado minore memoria possibile
 		le modifiche possono avvenire per via tastiera o per via bottoni
 
-	Febbraio 2020: Inizio sviluppo della struttura a classi
+	Febbraio 2020: Inizio sviluppo della struttura a classi.
 
-	Dicembre 2019: Presa in carico della tesi
+	Dicembre 2019: Presa in carico della tesi.
 
 ### Altri impegni che rallentano la tesi:Lavoro part time come programmatore
 
