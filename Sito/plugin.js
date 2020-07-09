@@ -138,7 +138,6 @@ function loadState(state){
 }
 
 function catchChange(){ // E' da far cercare il cambiamento solo all'interno di un range definito
-  //console.log("inizio: " + getTime());
   newState = catchState();
 
   if (oldState == undefined) {
@@ -150,24 +149,24 @@ function catchChange(){ // E' da far cercare il cambiamento solo all'interno di 
   var start = 0;
   var newEnd = newState.length -1;
   var oldEnd = oldState.length -1;
-  while ((start < newState.length) && (newState[start] == oldState[start])) start ++;
-  while ((newEnd > start) && (newState[newEnd] == oldState[oldEnd]) && (oldState[start-1] != oldState[oldEnd])) { // se c'è stato quache cambiamento allora è probabile che la lunghezza cambia
-    // l'ultimo controllo serve se si hanno la fine e l'inizio con la stessa lettera, perchè non li conterebbe
+  while ( start < newState.length && newState[start] == oldState[start] ) start ++;
+  while ( newEnd >= start && oldEnd >= start && newState[newEnd] == oldState[oldEnd]) { // se c'è stato quache cambiamento allora è probabile che la lunghezza cambia
     newEnd --;
     oldEnd --;
   }
 
   if (start < newState.length) { // Se c'è stato un cambiamento
-    // da inserire il le modifiche di tipo strutturale 
-    console.log(`State Changed    | "${oldState.slice(start,oldEnd+1)}" into "${newState.slice(start,newEnd+1)}"`);
-    mech.insItem("DEL", start, oldState.slice(start,oldEnd+1), by);
-    mech.insItem("INS", start, newState.slice(start,newEnd+1), by);
+    // da inserire il le modifiche di tipo strutturale
+    let del = oldState.slice(start,oldEnd+1);
+    let add = newState.slice(start,newEnd+1);
+    console.log(`State Changed    | "${del}" into "${add}"`);
+    mech.insItem("DEL", start, del, by);
+    mech.insItem("INS", start, add, by);
     mech.emptyRevertedMech();   // Se si fanno delle modifiche la coda con gli undo annulati va svuotata
   }
   else console.log('State Unchanged');
 
   oldState = newState;
-  //console.log("fine: " + getTime());
 }
 
 function undoChange() {
@@ -191,7 +190,7 @@ function undoChange() {
     }
   }
 
-  console.log(`Added ${add} and Removed ${rem}`);
+  console.log(`Added "${add}" and Removed "${rem}"`);
   loadState(state);
   console.log("Undo Done");
 }
@@ -219,7 +218,7 @@ function redoChange() {
     }
   }
 
-  console.log(`Added ${add} and Removed ${rem}`);
+  console.log(`Added "${add}" and Removed "${rem}"`);
   loadState(state);
   console.log("Redo Done");
 }
