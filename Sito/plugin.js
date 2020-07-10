@@ -113,31 +113,41 @@ class Semantic {
 /* ----- */
 // INIT CLASS and VAR
 oldState = undefined;
-var by = "Francesco";
+var by = "";
 var mech = new Mechanical();
 //var struct = new Structular();
 //var sem = new Semantic();
 
 const delay = ms => new Promise(res => setTimeout(res, ms));
 
+var editor;
+
 async function checkChange(){
-  while (true) {
-    try { await catchChange(); }
+  let loaded = false;
+  while (loaded == false) {
+    try {
+      editor = tinyMCE.activeEditor.iframeElement.contentDocument.getElementsByTagName('body')[0];
+      loaded = true;
+    }
     catch(err) { await delay(200); } // Per dare il tempo a tinyMCE di caricarsi, err sta perchè è supportato solo da ES10
+  }
+  while (true) {
+    catchChange();
     await delay(800); // Ogni quanto va rilanciata
   }
 }
 
 function catchState(){
-  state = tinyMCE.activeEditor.iframeElement.contentDocument.getElementsByTagName('body')[0].innerHTML;
+  state = editor.innerHTML;
   return(state);
 }
 
 function loadState(state){
-  oldState = tinyMCE.activeEditor.iframeElement.contentDocument.getElementsByTagName('body')[0].innerHTML = state;
+  oldState = editor.innerHTML = state;
 }
 
 function catchChange(){ // E' da far cercare il cambiamento solo all'interno di un range definito
+  console.log(getTime());
   newState = catchState();
 
   if (oldState == undefined) {
