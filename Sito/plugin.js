@@ -131,23 +131,30 @@ async function checkChange(){
     }
     catch(err) { await delay(200); } // Per dare il tempo a tinyMCE di caricarsi, err sta perchè è supportato solo da ES10
   }
-  while (true) {
-    catchChange();
-    await delay(800); // Ogni quanto va rilanciata
-  }
+
+  catchChange(); // Per caricare lo stato
+  ["click", "keyup"].forEach((event, i) => {
+    document.addEventListener(event, (evn) => { rightKey(evn); });
+    editor.addEventListener(event, (evn) => { rightKey(evn); });
+  });
 }
 
-function catchState(){
-  state = editor.innerHTML;
-  return(state);
+async function rightKey(event) {
+  await delay (100);
+  //console.log(event);
+
+  if (event.key == undefined) { catchChange(); return (true); }
+  [" ", ".", ",", ";", "Enter"].forEach((key, i) => {
+    console.log(event.key, key);
+    if (key == event.key) catchChange();
+  });
 }
 
-function loadState(state){
-  oldState = editor.innerHTML = state;
-}
+function catchState() { return(editor.innerHTML); }
+
+function loadState(state) { oldState = editor.innerHTML = state; }
 
 function catchChange(){ // E' da far cercare il cambiamento solo all'interno di un range definito
-  console.log(getTime());
   newState = catchState();
 
   if (oldState == undefined) {
@@ -259,20 +266,6 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
 });
 
 checkChange();
-
-
-async function go(){
-  var letter = 'a';
-  for (var i = 0; i<26; i++){
-    for (var j=0; j<50; j++){
-      state = tinyMCE.activeEditor.iframeElement.contentDocument.getElementsByTagName('body')[0].innerHTML;
-      tinyMCE.activeEditor.iframeElement.contentDocument.getElementsByTagName('body')[0].innerHTML =  state.slice(0,state.length-4) + letter + '</p>';
-      await delay(50);
-    }
-    //console.log(letter+letter+letter+letter+letter);
-    letter = String.fromCharCode(letter.charCodeAt(0) + 1);
-  }
-}
 
 function test(){
   var by = "Francesco";
