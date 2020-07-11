@@ -4,6 +4,10 @@
 
 ### Stato della tesi: In Sviluppo
 
+	11 Luglio: Il cursore viene spostato a destra della modifica dopo undo/redo
+	
+	10 Luglio: Disabilitato Undo di Tiny, messe icone e shortcut 
+	
 	9 Luglio: La cattura del cambiamento dava dei problemi, negli scorsi giorni
 	ho provato a correggerlo con varie mtodologie, ora prende le differenze in modo esatto,
 	anche se forse l'utilizzio di tecniche più avanzate sarebbe più corretto.
@@ -24,6 +28,6 @@
 
 	Dicembre 2019: Presa in carico della tesi.
 
-### Altri impegni che rallentano la tesi:Lavoro part time come programmatore
+### Altri impegni che rallentano la tesi:Lavoro part time come sviluppatore
 
 ### [Link al progetto di tesi](http://site181980.tw.cs.unibo.it)
