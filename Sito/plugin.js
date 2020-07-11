@@ -137,17 +137,11 @@ async function checkChange(){
   }
 }
 
-function catchState(){
-  state = editor.innerHTML;
-  return(state);
-}
+function catchState(){ return(editor.innerHTML); }
 
-function loadState(state){
-  oldState = editor.innerHTML = state;
-}
+function loadState(state){ oldState = editor.innerHTML = state; }
 
 function catchChange(){ // E' da far cercare il cambiamento solo all'interno di un range definito
-  console.log(getTime());
   newState = catchState();
 
   if (oldState == undefined) {
@@ -234,19 +228,29 @@ function redoChange() {
 }
 
 tinymce.PluginManager.add('UndoStack', function(editor, url) {
+  editor.on('BeforeAddUndo', function(e) {
+    return false;
+  });
+
   editor.ui.registry.addButton('Custom-Undo', {
+    icon: 'undo',
     text: 'Undo',
     onAction: function () {
       undoChange();
     }
   });
+  editor.shortcuts.add('ctrl+z', "Undo shortcut", function() { undoChange(); });
+
 
   editor.ui.registry.addButton('Custom-Redo', {
+    icon: 'redo',
     text: 'Redo',
     onAction: function () {
       redoChange();
     }
   });
+  editor.shortcuts.add('ctrl+shift+z', "Redo shortcut", function() { redoChange(); });
+
 
   return {
     getMetadata: function () {
@@ -260,19 +264,6 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
 
 checkChange();
 
-
-async function go(){
-  var letter = 'a';
-  for (var i = 0; i<26; i++){
-    for (var j=0; j<50; j++){
-      state = tinyMCE.activeEditor.iframeElement.contentDocument.getElementsByTagName('body')[0].innerHTML;
-      tinyMCE.activeEditor.iframeElement.contentDocument.getElementsByTagName('body')[0].innerHTML =  state.slice(0,state.length-4) + letter + '</p>';
-      await delay(50);
-    }
-    //console.log(letter+letter+letter+letter+letter);
-    letter = String.fromCharCode(letter.charCodeAt(0) + 1);
-  }
-}
 
 function test(){
   var by = "Francesco";
