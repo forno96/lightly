@@ -242,11 +242,8 @@ function setCursorPos(start, end){
   let range = tinyMCE.activeEditor.selection.getRng();
   let node = editor.firstChild.firstChild;
 
-  start -= 3;                     // il <p> non viene contato
-  start = start < 0 ? 0 : start;  // per far stare il range dentro il contenuto
-
-  end -= 3;                                     // il <p> non viene contato
-  end = end > node.length ? node.length : end; // per far stare il range dentro il contenuto
+  start = sanitize (start, node.length);
+  end = sanitize (end, node.length);
 
   if (node.length != undefined) { // se p non contiene nulla non bisogna spostare il cursore
     range.setStart(node, start);
@@ -254,6 +251,13 @@ function setCursorPos(start, end){
     console.log(`Cursor set from ${start} to ${end}`);
   }
   //console.log(start, end, node.length, node);
+}
+
+function sanitize (num, max){   // mette il num nel range tra 0 e max
+  num -= 3;                 // il <p> non viene contato
+  num = num < 0 ? 0 : num;  // per far stare il range dentro il contenuto
+  num = num > max ? max : num;
+  return num;
 }
 
 tinymce.PluginManager.add('UndoStack', function(editor, url) {
