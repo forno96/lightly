@@ -134,7 +134,7 @@ async function checkChange(){
   }
 
   catchChange(); // Per caricare lo stato
-  ["click", "keyup"].forEach((event, i) => {
+  ["click", "keyup", "dblclick", "onclick"].forEach((event, i) => {
     document.addEventListener(event, (evn) => { rightKey(evn); });
     editor.addEventListener(event, (evn) => { rightKey(evn); });
   });
