@@ -127,7 +127,7 @@ async function checkChange(){
   let loaded = false;
   while (loaded == false) {
     try {
-      editor = tinyMCE.activeEditor.iframeElement.contentDocument.getElementsByTagName('body')[0];
+      editor = tinyMCE.activeEditor.iframeElement.contentDocument.body;
       loaded = true;
     }
     catch(err) { await delay(200); } // Per dare il tempo a tinyMCE di caricarsi, err sta perchè è supportato solo da ES10
@@ -203,6 +203,7 @@ function undoChange() {
 
   state = catchState();
   var add, rem;
+  var cursorPos;
 
   for (var i = 0; i < 2; i++) {
     item = mech.remItem(mech.stackMech.length-1);
@@ -213,12 +214,15 @@ function undoChange() {
     else { // se op è DEL aggiunge
       state = state.slice(0,item.pos) + item.content + state.slice(item.pos);
       add = item.content;
+      cursorPos = item.pos + item.content.length;
     }
   }
 
   console.log(`Added "${add}" and Removed "${rem}"`);
   loadState(state);
   console.log("Undo Done");
+
+  setCursorPos(cursorPos, cursorPos);
 }
 
 function redoChange() {
@@ -229,6 +233,7 @@ function redoChange() {
 
   state = catchState();
   var add, rem;
+  var cursorPos;
 
   for (var i = 0; i < 2; i++) {
     item = mech.remRevert(mech.revertedstack.length-1);
@@ -236,6 +241,8 @@ function redoChange() {
       state = state.slice(0,item.pos) + item.content + state.slice(item.pos);
       mech.insItem("INS", item.pos, item.content, item.by);
       add = item.content;
+
+      cursorPos = item.pos +1;
     }
     else { // se op è DEL toglie
       state = state.slice(0,item.pos) + state.slice(item.pos + item.content.length);
@@ -247,22 +254,58 @@ function redoChange() {
   console.log(`Added "${add}" and Removed "${rem}"`);
   loadState(state);
   console.log("Redo Done");
+
+  setCursorPos(cursorPos, cursorPos);
+}
+
+function setCursorPos(start, end){
+  editor.focus();
+
+  let range = tinyMCE.activeEditor.selection.getRng();
+  let node = editor.firstChild.firstChild;
+
+  start = sanitize (start, node.length);
+  end = sanitize (end, node.length);
+
+  if (node.length != undefined) { // se p non contiene nulla non bisogna spostare il cursore
+    range.setStart(node, start);
+    range.setEnd(node, end);
+    console.log(`Cursor set from ${start} to ${end}`);
+  }
+  //console.log(start, end, node.length, node);
+}
+
+function sanitize (num, max){   // mette il num nel range tra 0 e max
+  num -= 3;                 // il <p> non viene contato
+  num = num < 0 ? 0 : num;  // per far stare il range dentro il contenuto
+  num = num > max ? max : num;
+  return num;
 }
 
 tinymce.PluginManager.add('UndoStack', function(editor, url) {
+  editor.on('BeforeAddUndo', function(e) {
+    return false;
+  });
+
   editor.ui.registry.addButton('Custom-Undo', {
+    icon: 'undo',
     text: 'Undo',
     onAction: function () {
       undoChange();
     }
   });
+  editor.shortcuts.add('ctrl+z', "Undo shortcut", function() { undoChange(); });
+
 
   editor.ui.registry.addButton('Custom-Redo', {
+    icon: 'redo',
     text: 'Redo',
     onAction: function () {
       redoChange();
     }
   });
+  editor.shortcuts.add('ctrl+shift+z', "Redo shortcut", function() { redoChange(); });
+
 
   return {
     getMetadata: function () {
