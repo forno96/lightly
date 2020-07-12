@@ -4,6 +4,8 @@
 
 ### Stato della tesi: In Sviluppo
 
+	12 Luglio: Ulteriore testing su event listener
+	
 	11 Luglio: Il cursore viene spostato a destra della modifica dopo undo/redo
 	
 	10 Luglio: Disabilitato Undo di Tiny, messe icone e shortcut 
