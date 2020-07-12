@@ -119,7 +119,6 @@ var mech = new Mechanical();
 //var sem = new Semantic();
 
 const delay = ms => new Promise(res => setTimeout(res, ms));
-
 var editor;
 
 async function checkChange(){
@@ -131,15 +130,37 @@ async function checkChange(){
     }
     catch(err) { await delay(200); } // Per dare il tempo a tinyMCE di caricarsi, err sta perchè è supportato solo da ES10
   }
+
+  let launch = true;
+
+  catchChange(); // Per caricare lo stato
+  ["keyup", "click", "onclick"].forEach((event, i) => {
+    document.addEventListener(event, (evn) => { rightKey(evn); launch = true; });
+    editor.addEventListener  (event, (evn) => { rightKey(evn); launch = true; });
+  });
+
+  editor.addEventListener("keydown", function () { launch = false; });
+
   while (true) {
-    catchChange();
-    await delay(800); // Ogni quanto va rilanciata
+    await delay (800);
+    if (launch = true && oldState != catchState()) catchChange();
   }
 }
 
-function catchState(){ return(editor.innerHTML); }
+async function rightKey(event) {
+  //console.log(event);
 
-function loadState(state){ oldState = editor.innerHTML = state; }
+  if (event.key == undefined) { catchChange(); return (true); }
+
+  console.log(`Keyup: "${event.key}"`);
+  [" ", ".", ",", ";", "Enter", "Backspace"].forEach((key, i) => {
+    if (key == event.key) catchChange();
+  });
+}
+
+function catchState() { return(editor.innerHTML); }
+
+function loadState(state) { oldState = editor.innerHTML = state; }
 
 function catchChange(){ // E' da far cercare il cambiamento solo all'interno di un range definito
   newState = catchState();
@@ -174,6 +195,8 @@ function catchChange(){ // E' da far cercare il cambiamento solo all'interno di 
 }
 
 function undoChange() {
+  if (oldState != catchState()) catchChange();
+
   if (mech.stack.length == 0) { // Se la pila è vuota undoChange non deve fare nulla
     console.log("Undo stack is empty");
     return (false);
@@ -298,7 +321,6 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
 });
 
 checkChange();
-
 
 function test(){
   var by = "Francesco";
