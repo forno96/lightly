@@ -142,8 +142,8 @@ async function checkChange(){
   editor.addEventListener("keydown", function () { launch = false; });
 
   while (true) {
-    await delay (800);
-    if (launch = true && oldState != catchState()) catchChange();
+    await delay (1000);
+    if (launch == true) catchChange();
   }
 }
 
@@ -171,6 +171,8 @@ function catchChange(){ // E' da far cercare il cambiamento solo all'interno di 
     return (false);
   }
 
+  if (oldState == newState) { console.log('State Unchanged'); return (true);}
+
   var start = 0;
   var newEnd = newState.length -1;
   var oldEnd = oldState.length -1;
@@ -189,13 +191,12 @@ function catchChange(){ // E' da far cercare il cambiamento solo all'interno di 
     mech.insItem("INS", start, add, by);
     mech.emptyRevertedMech();   // Se si fanno delle modifiche la coda con gli undo annulati va svuotata
   }
-  else console.log('State Unchanged');
 
   oldState = newState;
 }
 
 function undoChange() {
-  if (oldState != catchState()) catchChange();
+  catchChange();
 
   if (mech.stack.length == 0) { // Se la pila è vuota undoChange non deve fare nulla
     console.log("Undo stack is empty");
