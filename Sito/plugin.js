@@ -119,8 +119,6 @@ var mech = new Mechanical();
 //var sem = new Semantic();
 
 const delay = ms => new Promise(res => setTimeout(res, ms));
-let launch = true;
-
 var editor;
 
 async function checkChange(){
@@ -134,16 +132,21 @@ async function checkChange(){
   }
 
   catchChange(); // Per caricare lo stato
-  ["click", "keyup", "dblclick", "onclick"].forEach((event, i) => {
-    document.addEventListener(event, (evn) => { rightKey(evn); });
-    editor.addEventListener(event, (evn) => { rightKey(evn); });
+  ["keyup", "click", "onclick"].forEach((event, i) => {
+    document.addEventListener(event, (evn) => { rightKey(evn); launch = true; });
+    editor.addEventListener  (event, (evn) => { rightKey(evn); launch = true; });
   });
+
+  let launch = true;
   editor.addEventListener("keydown", function () { launch = false; });
+
+  while (true) {
+    await delay (2000);
+    if (launch = true) catchChange();
+  }
 }
 
 async function rightKey(event) {
-  launch = false;
-
   await delay (100);
   //console.log(event);
 
@@ -153,10 +156,6 @@ async function rightKey(event) {
   [" ", ".", ",", ";", "Enter", "Backspace"].forEach((key, i) => {
     if (key == event.key) catchChange();
   });
-
-  launch = true;
-  await delay(2000);
-  if (launch == true) catchChange();  // Servono le ultime 3 righe?
 }
 
 function catchState() { return(editor.innerHTML); }
@@ -196,6 +195,8 @@ function catchChange(){ // E' da far cercare il cambiamento solo all'interno di 
 }
 
 function undoChange() {
+  if (oldState != newState) catchChange();
+
   if (mech.stack.length == 0) { // Se la pila è vuota undoChange non deve fare nulla
     console.log("Undo stack is empty");
     return (false);
