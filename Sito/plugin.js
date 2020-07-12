@@ -288,8 +288,9 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
   });
 
   editor.ui.registry.addButton('Custom-Undo', {
-    icon: 'undo',
     text: 'Undo',
+    icon: 'undo',
+    tooltip: 'CTRL + Z',
     onAction: function () {
       undoChange();
     }
@@ -298,8 +299,9 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
 
 
   editor.ui.registry.addButton('Custom-Redo', {
-    icon: 'redo',
     text: 'Redo',
+    icon: 'redo',
+    tooltip: 'CTRL + SHIFT + Z',
     onAction: function () {
       redoChange();
     }
