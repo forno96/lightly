@@ -119,6 +119,7 @@ var mech = new Mechanical();
 //var sem = new Semantic();
 
 const delay = ms => new Promise(res => setTimeout(res, ms));
+let launch = true;
 
 var editor;
 
@@ -137,17 +138,25 @@ async function checkChange(){
     document.addEventListener(event, (evn) => { rightKey(evn); });
     editor.addEventListener(event, (evn) => { rightKey(evn); });
   });
+  editor.addEventListener("keydown", function () { launch = false; });
 }
 
 async function rightKey(event) {
+  launch = false;
+
   await delay (100);
   //console.log(event);
 
   if (event.key == undefined) { catchChange(); return (true); }
-  [" ", ".", ",", ";", "Enter"].forEach((key, i) => {
-    console.log(event.key, key);
+
+  console.log(`Keyup: "${event.key}"`);
+  [" ", ".", ",", ";", "Enter", "Backspace"].forEach((key, i) => {
     if (key == event.key) catchChange();
   });
+
+  launch = true;
+  await delay(2000);
+  if (launch == true) catchChange();  // Servono le ultime 3 righe?
 }
 
 function catchState() { return(editor.innerHTML); }
