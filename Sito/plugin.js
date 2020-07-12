@@ -131,23 +131,23 @@ async function checkChange(){
     catch(err) { await delay(200); } // Per dare il tempo a tinyMCE di caricarsi, err sta perchè è supportato solo da ES10
   }
 
+  let launch = true;
+
   catchChange(); // Per caricare lo stato
   ["keyup", "click", "onclick"].forEach((event, i) => {
     document.addEventListener(event, (evn) => { rightKey(evn); launch = true; });
     editor.addEventListener  (event, (evn) => { rightKey(evn); launch = true; });
   });
 
-  let launch = true;
   editor.addEventListener("keydown", function () { launch = false; });
 
   while (true) {
-    await delay (2000);
-    if (launch = true) catchChange();
+    await delay (800);
+    if (launch = true && oldState != catchState()) catchChange();
   }
 }
 
 async function rightKey(event) {
-  await delay (100);
   //console.log(event);
 
   if (event.key == undefined) { catchChange(); return (true); }
@@ -195,7 +195,7 @@ function catchChange(){ // E' da far cercare il cambiamento solo all'interno di 
 }
 
 function undoChange() {
-  if (oldState != newState) catchChange();
+  if (oldState != catchState()) catchChange();
 
   if (mech.stack.length == 0) { // Se la pila è vuota undoChange non deve fare nulla
     console.log("Undo stack is empty");
