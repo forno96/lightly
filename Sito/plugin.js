@@ -4,7 +4,14 @@ function sanitizeID(value){
   for (var i = 5; i > tmp; i--) {ret += '0';}
   return ret + value;
 }
+
 function getTime(){ return (new Date().toJSON());}
+
+function sanitize (num, max){   // mette il num nel range tra 0 e max
+  num = num < 0 ? 0 : num;  // per far stare il range dentro il contenuto
+  num = num > max ? max : num;
+  return num;
+}
 
 /*
 INS, DEL
@@ -205,7 +212,7 @@ function undoChange() {
 
   state = catchState();
   var add, rem;
-  var cursorPos;
+  var cursorPos = 0;
 
   for (var i = 0; i < 2; i++) {
     item = mech.remItem(mech.stackMech.length-1);
@@ -216,7 +223,8 @@ function undoChange() {
     else { // se op è DEL aggiunge
       state = state.slice(0,item.pos) + item.content + state.slice(item.pos);
       add = item.content;
-      cursorPos = item.pos + item.content.length;
+
+      cursorPos += item.pos + item.content.length;
     }
   }
 
@@ -235,7 +243,7 @@ function redoChange() {
 
   state = catchState();
   var add, rem;
-  var cursorPos;
+  var cursorPos = 0;
 
   for (var i = 0; i < 2; i++) {
     item = mech.remRevert(mech.revertedstack.length-1);
@@ -244,7 +252,9 @@ function redoChange() {
       mech.insItem("INS", item.pos, item.content, item.by);
       add = item.content;
 
-      cursorPos = item.pos +1;
+      cursorPos += item.pos
+      if ( item.content == "&nbsp;" ) cursorPos += 1;
+      else cursorPos += item.content.length
     }
     else { // se op è DEL toglie
       state = state.slice(0,item.pos) + state.slice(item.pos + item.content.length);
@@ -260,28 +270,33 @@ function redoChange() {
   setCursorPos(cursorPos, cursorPos);
 }
 
-function setCursorPos(start, end){
+function setCursorPos(st, en){
   editor.focus();
 
   let range = tinyMCE.activeEditor.selection.getRng();
-  let node = editor.firstChild.firstChild;
+  let fullNode = editor.firstChild;
 
-  start = sanitize (start, node.length);
-  end = sanitize (end, node.length);
+  start = sanitize (st - (fullNode.tagName.length + 2), fullNode.parentElement.innerHTML.length);
+  end   = sanitize (en - (fullNode.tagName.length + 2), fullNode.parentElement.innerHTML.length);
 
-  if (node.length != undefined) { // se p non contiene nulla non bisogna spostare il cursore
-    range.setStart(node, start);
-    range.setEnd(node, end);
-    console.log(`Cursor set from ${start} to ${end}`);
-  }
-  //console.log(start, end, node.length, node);
-}
+  var startSet = false, endSet = false;
+  var nodeInsLen, nodeFullLen;
 
-function sanitize (num, max){   // mette il num nel range tra 0 e max
-  num -= 3;                 // il <p> non viene contato
-  num = num < 0 ? 0 : num;  // per far stare il range dentro il contenuto
-  num = num > max ? max : num;
-  return num;
+  var nodes = fullNode.childNodes;
+  nodes.forEach((node, i) => {
+    nodeInsLen = node.nodeValue != undefined ? node.nodeValue.length : node.firstChild.nodeValue.length;  // Ci sono 2 tipi di nodo, quello principale e quelli dei nodi interni
+    if ( start < nodeInsLen && start >= 0) { range.setStart(node, start); startSet = true;}               // L'offset va in base alle lettere del nodo
+    if ( end   < nodeInsLen && end   >= 0) { range.setEnd(node, end);     endSet   = true;}
+
+    nodeFullLen = node.tagName == undefined ? node.nodeValue.length : node.outerHTML.length;              // Se il nodo è principale non bisogn contare i brachet
+    start -= nodeFullLen;
+    end   -= nodeFullLen;
+  });
+
+  if (startSet == false) range.setStart(nodes[nodes.length-1], nodeInsLen);
+  if (endSet   == false) range.setEnd  (nodes[nodes.length-1], nodeInsLen);
+
+  console.log(`Cursor set from ${st} to ${en}`);
 }
 
 tinymce.PluginManager.add('UndoStack', function(editor, url) {
