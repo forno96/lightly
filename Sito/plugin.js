@@ -273,8 +273,8 @@ function redoChange() {
 function setCursorPos(st, en){
   editor.focus();
 
-  let range = tinyMCE.activeEditor.selection.getRng();
-  let fullNode = editor.firstChild;
+  var range = tinyMCE.activeEditor.selection.getRng();
+  var fullNode = editor.firstChild;
 
   start = sanitize (st - (fullNode.tagName.length + 2), fullNode.parentElement.innerHTML.length);
   end   = sanitize (en - (fullNode.tagName.length + 2), fullNode.parentElement.innerHTML.length);
@@ -293,8 +293,10 @@ function setCursorPos(st, en){
     end   -= nodeFullLen;
   });
 
-  if (startSet == false) range.setStart(nodes[nodes.length-1], nodeInsLen);
-  if (endSet   == false) range.setEnd  (nodes[nodes.length-1], nodeInsLen);
+  var node = nodes[nodes.length-1];
+  if (node.firstChild != null) node = node.firstChild; //nel caso di nodi figlio bisogna entrare dentro il sotto nodo
+  if (startSet == false) range.setStart(node, nodeInsLen);
+  if (endSet   == false) range.setEnd  (node, nodeInsLen);
 
   console.log(`Cursor set from ${st} to ${en}`);
 }
