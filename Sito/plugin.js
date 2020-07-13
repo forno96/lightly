@@ -276,29 +276,42 @@ function setCursorPos(st, en){
   var range = tinyMCE.activeEditor.selection.getRng();
   var fullNode = editor.firstChild;
 
-  start = sanitize (st - (fullNode.tagName.length + 2), fullNode.parentElement.innerHTML.length);
-  end   = sanitize (en - (fullNode.tagName.length + 2), fullNode.parentElement.innerHTML.length);
+  start = sanitize (st - (fullNode.tagName.length + 2), fullNode.innerHTML.length);
+  end   = sanitize (en - (fullNode.tagName.length + 2), fullNode.innerHTML.length);
 
-  var startSet = false, endSet = false;
-  var nodeInsLen, nodeFullLen;
+  var hasStart = false, hasEnd = false;
+  let tmp = navigateNode(range, fullNode, start, end, hasStart, hasEnd);
 
-  var nodes = fullNode.childNodes;
-  nodes.forEach((node, i) => {
-    nodeInsLen = node.nodeValue != undefined ? node.nodeValue.length : node.firstChild.nodeValue.length;  // Ci sono 2 tipi di nodo, quello principale e quelli dei nodi interni
-    if ( start < nodeInsLen && start >= 0) { range.setStart(node, start); startSet = true;}               // L'offset va in base alle lettere del nodo
-    if ( end   < nodeInsLen && end   >= 0) { range.setEnd(node, end);     endSet   = true;}
+  if (tmp.hasStart == false) range.setStart(fullNode.lastChild, fullNode.lastChild.textContent.length);
+  if (tmp.hasEnd   == false) range.setEnd  (fullNode.lastChild, fullNode.lastChild.textContent.length);
+  console.log(`Cursor set from ${st} to ${en}`);
+}
 
-    nodeFullLen = node.tagName == undefined ? node.nodeValue.length : node.outerHTML.length;              // Se il nodo è principale non bisogn contare i brachet
-    start -= nodeFullLen;
-    end   -= nodeFullLen;
+function navigateNode(range, nd, start, end, hasStart, hasEnd){
+  nd.childNodes.forEach((node, i) => {
+    if (node.hasChildNodes()) {
+      let tmp = navigateNode(range, node, start - (node.tagName.length + 2) , end - (node.tagName.length + 2), hasStart, hasEnd);
+      start = tmp.start == 0 ? 0 : tmp.start - (node.tagName.length + 3);
+      end   = tmp.end   == 0 ? 0 : tmp.end   - (node.tagName.length + 3);
+      hasStart = hasStart | tmp.hasStart;
+      hasEnd   = hasEnd   | tmp.hasEnd;
+    }
+    else {
+      let nodeLen = node.nodeValue.length;
+
+      if ( start < nodeLen && hasStart == false) { range.setStart(node, start < 0 ? 0 : start); hasStart = true; }
+      if ( end   < nodeLen && hasEnd   == false) { range.setEnd  (node,   end < 0 ? 0 : end);   hasEnd   = true; }
+
+      start -= nodeLen; end -= nodeLen;
+    }
   });
 
-  var node = nodes[nodes.length-1];
-  if (node.firstChild != null) node = node.firstChild; //nel caso di nodi figlio bisogna entrare dentro il sotto nodo
-  if (startSet == false) range.setStart(node, nodeInsLen);
-  if (endSet   == false) range.setEnd  (node, nodeInsLen);
-
-  console.log(`Cursor set from ${st} to ${en}`);
+  return ({
+    start    : start,
+    end      : end,
+    hasStart : hasStart,
+    hasEnd   : hasEnd
+  });
 }
 
 tinymce.PluginManager.add('UndoStack', function(editor, url) {
