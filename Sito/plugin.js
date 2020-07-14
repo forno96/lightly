@@ -4,7 +4,14 @@ function sanitizeID(value){
   for (var i = 5; i > tmp; i--) {ret += '0';}
   return ret + value;
 }
+
 function getTime(){ return (new Date().toJSON());}
+
+function sanitize (num, max){   // mette il num nel range tra 0 e max
+  num = num < 0 ? 0 : num;  // per far stare il range dentro il contenuto
+  num = num > max ? max : num;
+  return num;
+}
 
 /*
 INS, DEL
@@ -43,73 +50,6 @@ class Mechanical {
   emptyRevertedMech() {this.revertedMech = [];}
 }
 
-/*
-NOOP, WRAP/UNWRAP, JOIN/SPLIT, REPLACE, INSERT/DELETE,
-PUNTUATION, WORDREPLACE, WORDCHANGE, TEXTREPLACE
-*/
-class Structular {
-  constructor(){
-    this.stackStruct = [];
-    this.editStruct = 0;
-  }
-
-  insItem(op, by, mech, listMech, old, nw){
-    var item = {
-      "id": "struct-" + sanitizeID(this.editStruct),
-      "op": op,
-      "old": old,
-      "new": nw,
-      "by": by,
-      "timestamp": getTime(),
-      "items": []
-    };
-
-    listMech.forEach((i) => {
-      item.items.push(mech.retItem(i));
-    });
-
-    this.stackStruct.push(item);
-
-    this.editStruct++;
-    return (this.editStruct -1);
-  }
-
-  get stack(){ return(this.stackStruct);}
-  retItem(i) {return(this.stackStruct[i]);}
-}
-
-/*
-MEANING, FIX, STYLE, EDITCHAIN, EDITWAR, EDITWAKE
-*/
-class Semantic {
-  constructor(){
-    this.stackSem = [];
-    this.editSem = 0;
-  }
-
-  insItem(op, by, struct, listStruct, old, nw){
-
-    var item = {
-      "id": "sem-" + sanitizeID(this.editSem),
-      "op": op,
-      "old": old,
-      "new": nw,
-      "items": []
-    };
-
-    listStruct.forEach((i) => {
-      item.items.push(struct.retItem(i));
-    });
-
-    this.stackSem.push(item);
-
-    this.editSem++;
-    return (this.editSem -1)
-  }
-
-  get stack(){ return(this.stackSem);}
-}
-
 /* ----- */
 // INIT CLASS and VAR
 oldState = undefined;
@@ -131,30 +71,11 @@ async function checkChange(){
     catch(err) { await delay(200); } // Per dare il tempo a tinyMCE di caricarsi, err sta perchè è supportato solo da ES10
   }
 
-  let launch = true;
 
   catchChange(); // Per caricare lo stato
   ["keyup", "click", "onclick"].forEach((event, i) => {
-    document.addEventListener(event, (evn) => { rightKey(evn); launch = true; });
-    editor.addEventListener  (event, (evn) => { rightKey(evn); launch = true; });
-  });
-
-  editor.addEventListener("keydown", function () { launch = false; });
-
-  while (true) {
-    await delay (800);
-    if (launch = true && oldState != catchState()) catchChange();
-  }
-}
-
-async function rightKey(event) {
-  //console.log(event);
-
-  if (event.key == undefined) { catchChange(); return (true); }
-
-  console.log(`Keyup: "${event.key}"`);
-  [" ", ".", ",", ";", "Enter", "Backspace"].forEach((key, i) => {
-    if (key == event.key) catchChange();
+    document.addEventListener(event, (evn) => { catchChange(); });
+    editor.addEventListener  (event, (evn) => { catchChange(); });
   });
 }
 
@@ -168,7 +89,12 @@ function catchChange(){ // E' da far cercare il cambiamento solo all'interno di 
   if (oldState == undefined) {
     oldState = newState;
     console.log('State Loaded');
-    return (false);
+    return;
+  }
+
+  if (oldState == newState) {
+    console.log('State Unchanged');
+    return;
   }
 
   var start = 0;
@@ -189,22 +115,21 @@ function catchChange(){ // E' da far cercare il cambiamento solo all'interno di 
     mech.insItem("INS", start, add, by);
     mech.emptyRevertedMech();   // Se si fanno delle modifiche la coda con gli undo annulati va svuotata
   }
-  else console.log('State Unchanged');
 
   oldState = newState;
 }
 
 function undoChange() {
-  if (oldState != catchState()) catchChange();
+  catchChange();
 
   if (mech.stack.length == 0) { // Se la pila è vuota undoChange non deve fare nulla
     console.log("Undo stack is empty");
-    return (false);
+    return;
   }
 
   state = catchState();
   var add, rem;
-  var cursorPos;
+  var cursorPos = 0;
 
   for (var i = 0; i < 2; i++) {
     item = mech.remItem(mech.stackMech.length-1);
@@ -215,7 +140,8 @@ function undoChange() {
     else { // se op è DEL aggiunge
       state = state.slice(0,item.pos) + item.content + state.slice(item.pos);
       add = item.content;
-      cursorPos = item.pos + item.content.length;
+
+      cursorPos += item.pos + item.content.length;
     }
   }
 
@@ -234,7 +160,7 @@ function redoChange() {
 
   state = catchState();
   var add, rem;
-  var cursorPos;
+  var cursorPos = 0;
 
   for (var i = 0; i < 2; i++) {
     item = mech.remRevert(mech.revertedstack.length-1);
@@ -243,7 +169,9 @@ function redoChange() {
       mech.insItem("INS", item.pos, item.content, item.by);
       add = item.content;
 
-      cursorPos = item.pos +1;
+      cursorPos += item.pos
+      if ( item.content == "&nbsp;" ) cursorPos += 1;
+      else cursorPos += item.content.length
     }
     else { // se op è DEL toglie
       state = state.slice(0,item.pos) + state.slice(item.pos + item.content.length);
@@ -259,28 +187,48 @@ function redoChange() {
   setCursorPos(cursorPos, cursorPos);
 }
 
-function setCursorPos(start, end){
+function setCursorPos(st, en){
   editor.focus();
 
-  let range = tinyMCE.activeEditor.selection.getRng();
-  let node = editor.firstChild.firstChild;
+  var range = tinyMCE.activeEditor.selection.getRng();
+  var fullNode = editor.firstChild;
 
-  start = sanitize (start, node.length);
-  end = sanitize (end, node.length);
+  start = sanitize (st - (fullNode.tagName.length + 2), fullNode.innerHTML.length);
+  end   = sanitize (en - (fullNode.tagName.length + 2), fullNode.innerHTML.length);
 
-  if (node.length != undefined) { // se p non contiene nulla non bisogna spostare il cursore
-    range.setStart(node, start);
-    range.setEnd(node, end);
-    console.log(`Cursor set from ${start} to ${end}`);
-  }
-  //console.log(start, end, node.length, node);
+  var hasStart = false, hasEnd = false;
+  let tmp = navigateNode(range, fullNode, start, end, hasStart, hasEnd);
+
+  if (tmp.hasStart == false) range.setStart(fullNode.lastChild, fullNode.lastChild.textContent.length);
+  if (tmp.hasEnd   == false) range.setEnd  (fullNode.lastChild, fullNode.lastChild.textContent.length);
+  console.log(`Cursor set from ${st} to ${en}`);
 }
 
-function sanitize (num, max){   // mette il num nel range tra 0 e max
-  num -= 3;                 // il <p> non viene contato
-  num = num < 0 ? 0 : num;  // per far stare il range dentro il contenuto
-  num = num > max ? max : num;
-  return num;
+function navigateNode(range, nd, start, end, hasStart, hasEnd){
+  nd.childNodes.forEach((node, i) => {
+    if (node.hasChildNodes()) {
+      let tmp = navigateNode(range, node, start - (node.tagName.length + 2) , end - (node.tagName.length + 2), hasStart, hasEnd);
+      start = tmp.start == 0 ? 0 : tmp.start - (node.tagName.length + 3);
+      end   = tmp.end   == 0 ? 0 : tmp.end   - (node.tagName.length + 3);
+      hasStart = hasStart | tmp.hasStart;
+      hasEnd   = hasEnd   | tmp.hasEnd;
+    }
+    else {
+      let nodeLen = node.nodeValue.length;
+
+      if ( start < nodeLen && hasStart == false) { range.setStart(node, start < 0 ? 0 : start); hasStart = true; }
+      if ( end   < nodeLen && hasEnd   == false) { range.setEnd  (node,   end < 0 ? 0 : end);   hasEnd   = true; }
+
+      start -= nodeLen; end -= nodeLen;
+    }
+  });
+
+  return ({
+    start    : start,
+    end      : end,
+    hasStart : hasStart,
+    hasEnd   : hasEnd
+  });
 }
 
 tinymce.PluginManager.add('UndoStack', function(editor, url) {
@@ -309,32 +257,13 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
   });
   editor.shortcuts.add('ctrl+shift+z', "Redo shortcut", function() { redoChange(); });
 
+  editor.on('ExecCommand', function() { catchChange(); });
 
   return {
     getMetadata: function () {
-      return  {
-        name: "Undo stack plugin",
-        url: "http://exampleplugindocsurl.com"
-      };
+      return  { name: "Undo stack plugin" };
     }
   };
 });
 
 checkChange();
-
-function test(){
-  var by = "Francesco";
-
-  var mech = new Mechanical();
-  var struct = new Structular();
-  var sem = new Semantic();
-
-  mech.insItem("DEL", 2343, "nuovo", by);
-  mech.insItem("DEL", 446, "</p><p>", by);
-
-  struct.insItem("NOOP", by, mech, [0,1]);
-
-  sem.insItem("MEANING", by, struct, [0]);
-
-  return sem.stack;
-}
