@@ -4,6 +4,10 @@
 
 ### Stato della tesi: In Sviluppo
 
+	14 Luglio: Prove su ramo FLT e testing sulle performance dello stack re/un-do attuale
+ 
+	13 Luglio: Riunione con Vitali e testing sulla fattibilità cambio di cattura della modifica 
+
 	12 Luglio: Ulteriore testing su event listener
 	
 	11 Luglio: Il cursore viene spostato a destra della modifica dopo undo/redo
