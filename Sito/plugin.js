@@ -76,7 +76,7 @@ async function checkChange(){
   });
 }
 
-function catchState() { return(tinymce.activeEditor.getContent()) }
+function catchState() { return(tinyMCE.activeEditor.dom.doc.body.innerHTML) }
 
 function loadState(state) {
   tinymce.activeEditor.setContent(state);
@@ -196,24 +196,25 @@ function setCursorPos(cur){
 
   var hasCursor = false;
   var cursor = sanitize (cur - (fullNode.tagName.length + 2), fullNode.innerHTML.length);
-  //var end   = sanitize (Math.max(st, en) - (fullNode.tagName.length + 2), fullNode.innerHTML.length);
+
   walker.next();
 
-  while (walker.current() != undefined && (!hasCursor || !hasEnd)){
+  while (walker.current() != undefined && !hasCursor){
     if (walker.current().outerHTML == undefined){ //se sei in un nodo text
-      nodeLen = walker.current().textContent.length;
+      let nodeLen = walker.current().textContent.length;
+      console.log(walker.current().textContent, cursor);
       if (cursor <= nodeLen && !hasCursor) {
-        range.setStart(walker.current(), cursor);
-        range.setEnd  (walker.current(), cursor);
+        console.log(cursor);
+        tinymce.activeEditor.selection.setCursorLocation(walker.current(), cursor)
         hasCursor = true;
       }
       cursor -= nodeLen;
       walker.next();
     }
     else {
-      nodeLen = walker.current().outerHTML.length;
+      var nodeLen = walker.current().outerHTML.length;
       if (cursor < nodeLen) {
-        cursor -= walker.current().tagName.length + 2;
+        cursor -= nodeLen - `${walker.current().innerHTML}</${walker.current().tagName}>`.length;
         walker.next();
       }
       else {
