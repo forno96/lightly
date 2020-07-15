@@ -8,7 +8,7 @@ function sanitizeID(value){
 function getTime(){ return (new Date().toJSON());}
 
 function sanitize (num, max){   // mette il num nel range tra 0 e max
-  num = num < 0 ? 0 : num;  // per far stare il range dentro il contenuto
+  num = num < 0 ? 0 : num;      // per far stare il range dentro il contenuto
   num = num > max ? max : num;
   return num;
 }
@@ -70,7 +70,7 @@ async function checkChange(){
   }
 
   catchChange(); // Per caricare lo stato
-  ["keyup", "click", "onclick"].forEach((event, i) => {
+  ["keyup", "click", "onclick"].forEach(event => {
     document.addEventListener(event, catchChange);
     editor.addEventListener  (event, catchChange);
   });
@@ -119,72 +119,54 @@ function catchChange(){ // E' da far cercare il cambiamento solo all'interno di 
   oldState = newState;
 }
 
-function undoChange() {
-  catchChange();
-
-  if (mech.stack.length == 0) { // Se la pila è vuota undoChange non deve fare nulla
-    console.log("Undo stack is empty");
-    return;
+function applyChange(type) {
+  // Se la pila è vuota undoChange non deve fare nulla
+  if (type == "UNDO" && mech.stack.length == 0) {
+    console.log("Undo stack is empty"); return;
+  }
+  else if (type == "REDO" && mech.revertedstack.length == 0) {
+    console.log("Redo stack is empty"); return;
   }
 
   state = catchState();
   var add, rem;
-  var cursorPos = 0;
 
   for (var i = 0; i < 2; i++) {
-    item = mech.remItem(mech.stackMech.length-1);
-    if (item.op == "INS") { // se op è INS toglie
-      state = state.slice(0,item.pos) + state.slice(item.pos + item.content.length);
-      rem = item.content;
-    }
-    else { // se op è DEL aggiunge
-      state = state.slice(0,item.pos) + item.content + state.slice(item.pos);
-      add = item.content;
 
-      cursorPos += item.pos;
-      if ( item.content == "&nbsp;" ) cursorPos += 1;
-      else cursorPos += item.content.length;
+    if (type == "UNDO"){
+      item = mech.remItem(mech.stackMech.length - 1);
+      if (item.op == "INS") {
+        state = state.slice(0, item.pos) + state.slice(item.pos + item.content.length);
+        rem = item;
+      }
+      else if (item.op == "DEL") {
+        state = state.slice(0, item.pos) + item.content + state.slice(item.pos);
+        add = item;
+      }
+    }
+    else if (type == "REDO"){
+      item = mech.remRevert(mech.revertedstack.length - 1);
+      if (item.op == "INS") {
+        state = state.slice(0, item.pos) + item.content + state.slice(item.pos);
+        mech.insItem("INS", item.pos, item.content, item.by);
+        add = item;
+      }
+      else if (item.op == "DEL") {
+        state = state.slice(0, item.pos) + state.slice(item.pos + item.content.length);
+        mech.insItem("DEL", item.pos, item.content, item.by);
+        rem = item;
+      }
     }
   }
 
-  console.log(`Added "${add}" and Removed "${rem}"`);
+  var cursorPos = add.pos;
+  if (add.content == "&nbsp;") cursorPos += 1;
+  else cursorPos += add.content.length;
+
   loadState(state);
-
   setCursorPos(cursorPos);
-}
 
-function redoChange() {
-  if (mech.revertedstack.length == 0) { // Se la pila è vuota redoChange non deve fare nulla
-    console.log("Redo stack is empty");
-    return (false);
-  }
-
-  state = catchState();
-  var add, rem;
-  var cursorPos = 0;
-
-  for (var i = 0; i < 2; i++) {
-    item = mech.remRevert(mech.revertedstack.length-1);
-    if (item.op == "INS") { // se op è INS aggiunge
-      state = state.slice(0,item.pos) + item.content + state.slice(item.pos);
-      mech.insItem("INS", item.pos, item.content, item.by);
-      add = item.content;
-
-      cursorPos += item.pos
-      if ( item.content == "&nbsp;" ) cursorPos += 1;
-      else cursorPos += item.content.length;
-    }
-    else { // se op è DEL toglie
-      state = state.slice(0,item.pos) + state.slice(item.pos + item.content.length);
-      mech.insItem("DEL", item.pos, item.content, item.by);
-      rem = item.content;
-    }
-  }
-
-  console.log(`Added "${add}" and Removed "${rem}"`);
-  loadState(state);
-
-  setCursorPos(cursorPos);
+  console.log(`Added "${add.content}" and Removed "${rem.content}"`);
 }
 
 function setCursorPos(cur){
@@ -236,10 +218,10 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
     icon: 'undo',
     tooltip: 'CTRL + Z',
     onAction: function () {
-      undoChange();
+      applyChange("UNDO");
     }
   });
-  editor.shortcuts.add('ctrl+z', "Undo shortcut", function() { undoChange(); });
+  editor.shortcuts.add('ctrl+z', "Undo shortcut", function() { applyChange("UNDO"); });
 
 
   editor.ui.registry.addButton('Custom-Redo', {
@@ -247,10 +229,10 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
     icon: 'redo',
     tooltip: 'CTRL + SHIFT + Z',
     onAction: function () {
-      redoChange();
+      applyChange("REDO");
     }
   });
-  editor.shortcuts.add('ctrl+shift+z', "Redo shortcut", function() { redoChange(); });
+  editor.shortcuts.add('ctrl+shift+z', "Redo shortcut", function() { applyChange("REDO"); });
 
   editor.on('ExecCommand', function() { catchChange(); });
 
