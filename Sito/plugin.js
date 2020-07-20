@@ -8,10 +8,12 @@ function sanitizeID(value){
 function getTime(){ return (new Date().toJSON());}
 
 function sanitize (num, max){   // mette il num nel range tra 0 e max
-  num = num < 0 ? 0 : num;  // per far stare il range dentro il contenuto
+  num = num < 0 ? 0 : num;      // per far stare il range dentro il contenuto
   num = num > max ? max : num;
   return num;
 }
+
+const delay = ms => new Promise(res => setTimeout(res, ms));
 
 /*
 INS, DEL
@@ -55,33 +57,14 @@ class Mechanical {
 oldState = undefined;
 var by = "";
 var mech = new Mechanical();
-//var struct = new Structular();
-//var sem = new Semantic();
+var ed;
 
-const delay = ms => new Promise(res => setTimeout(res, ms));
-var editor;
+function catchState() { return(tinyMCE.activeEditor.dom.doc.body.innerHTML) }
 
-async function checkChange(){
-  let loaded = false;
-  while (loaded == false) {
-    try {
-      editor = tinyMCE.activeEditor.iframeElement.contentDocument.body;
-      loaded = true;
-    }
-    catch(err) { await delay(200); } // Per dare il tempo a tinyMCE di caricarsi, err sta perchè è supportato solo da ES10
-  }
-
-
-  catchChange(); // Per caricare lo stato
-  ["keyup", "click", "onclick"].forEach((event, i) => {
-    document.addEventListener(event, (evn) => { catchChange(); });
-    editor.addEventListener  (event, (evn) => { catchChange(); });
-  });
+function loadState(state) {
+  tinymce.activeEditor.setContent(state);
+  oldState = state;
 }
-
-function catchState() { return(editor.innerHTML); }
-
-function loadState(state) { oldState = editor.innerHTML = state; }
 
 function catchChange(){ // E' da far cercare il cambiamento solo all'interno di un range definito
   newState = catchState();
@@ -119,116 +102,93 @@ function catchChange(){ // E' da far cercare il cambiamento solo all'interno di 
   oldState = newState;
 }
 
-function undoChange() {
-  catchChange();
-
-  if (mech.stack.length == 0) { // Se la pila è vuota undoChange non deve fare nulla
-    console.log("Undo stack is empty");
-    return;
+function applyChange(type) {
+  // Se la pila è vuota undoChange non deve fare nulla
+  if (type == "UNDO" && mech.stack.length == 0) {
+    console.log("Undo stack is empty"); return;
+  }
+  else if (type == "REDO" && mech.revertedstack.length == 0) {
+    console.log("Redo stack is empty"); return;
   }
 
   state = catchState();
   var add, rem;
-  var cursorPos = 0;
 
   for (var i = 0; i < 2; i++) {
-    item = mech.remItem(mech.stackMech.length-1);
-    if (item.op == "INS") { // se op è INS toglie
-      state = state.slice(0,item.pos) + state.slice(item.pos + item.content.length);
-      rem = item.content;
-    }
-    else { // se op è DEL aggiunge
-      state = state.slice(0,item.pos) + item.content + state.slice(item.pos);
-      add = item.content;
 
-      cursorPos += item.pos + item.content.length;
+    if (type == "UNDO"){
+      item = mech.remItem(mech.stackMech.length - 1);
+      if (item.op == "INS") {
+        state = state.slice(0, item.pos) + state.slice(item.pos + item.content.length);
+        rem = item;
+      }
+      else if (item.op == "DEL") {
+        state = state.slice(0, item.pos) + item.content + state.slice(item.pos);
+        add = item;
+      }
+    }
+    else if (type == "REDO"){
+      item = mech.remRevert(mech.revertedstack.length - 1);
+      if (item.op == "INS") {
+        state = state.slice(0, item.pos) + item.content + state.slice(item.pos);
+        mech.insItem("INS", item.pos, item.content, item.by);
+        add = item;
+      }
+      else if (item.op == "DEL") {
+        state = state.slice(0, item.pos) + state.slice(item.pos + item.content.length);
+        mech.insItem("DEL", item.pos, item.content, item.by);
+        rem = item;
+      }
     }
   }
 
-  console.log(`Added "${add}" and Removed "${rem}"`);
-  loadState(state);
-  console.log("Undo Done");
+  var cursorPos = add.pos;
+  if (add.content == "&nbsp;") cursorPos += 1;
+  else cursorPos += add.content.length;
 
-  setCursorPos(cursorPos, cursorPos);
+  loadState(state);
+  setCursorPos(cursorPos);
+
+  console.log(`Added "${add.content}" and Removed "${rem.content}"`);
 }
 
-function redoChange() {
-  if (mech.revertedstack.length == 0) { // Se la pila è vuota redoChange non deve fare nulla
-    console.log("Redo stack is empty");
-    return (false);
-  }
-
-  state = catchState();
-  var add, rem;
-  var cursorPos = 0;
-
-  for (var i = 0; i < 2; i++) {
-    item = mech.remRevert(mech.revertedstack.length-1);
-    if (item.op == "INS") { // se op è INS aggiunge
-      state = state.slice(0,item.pos) + item.content + state.slice(item.pos);
-      mech.insItem("INS", item.pos, item.content, item.by);
-      add = item.content;
-
-      cursorPos += item.pos
-      if ( item.content == "&nbsp;" ) cursorPos += 1;
-      else cursorPos += item.content.length
-    }
-    else { // se op è DEL toglie
-      state = state.slice(0,item.pos) + state.slice(item.pos + item.content.length);
-      mech.insItem("DEL", item.pos, item.content, item.by);
-      rem = item.content;
-    }
-  }
-
-  console.log(`Added "${add}" and Removed "${rem}"`);
-  loadState(state);
-  console.log("Redo Done");
-
-  setCursorPos(cursorPos, cursorPos);
-}
-
-function setCursorPos(st, en){
-  editor.focus();
+function setCursorPos(cur){
+  ed.focus();
 
   var range = tinyMCE.activeEditor.selection.getRng();
-  var fullNode = editor.firstChild;
+  var fullNode = ed.firstChild;
+  var walker = new tinymce.dom.TreeWalker(fullNode);
 
-  start = sanitize (st - (fullNode.tagName.length + 2), fullNode.innerHTML.length);
-  end   = sanitize (en - (fullNode.tagName.length + 2), fullNode.innerHTML.length);
+  var hasCursor = false;
+  var cursor = sanitize (cur - (fullNode.tagName.length + 2), fullNode.innerHTML.length);
 
-  var hasStart = false, hasEnd = false;
-  let tmp = navigateNode(range, fullNode, start, end, hasStart, hasEnd);
+  walker.next();
 
-  if (tmp.hasStart == false) range.setStart(fullNode.lastChild, fullNode.lastChild.textContent.length);
-  if (tmp.hasEnd   == false) range.setEnd  (fullNode.lastChild, fullNode.lastChild.textContent.length);
-  console.log(`Cursor set from ${st} to ${en}`);
-}
-
-function navigateNode(range, nd, start, end, hasStart, hasEnd){
-  nd.childNodes.forEach((node, i) => {
-    if (node.hasChildNodes()) {
-      let tmp = navigateNode(range, node, start - (node.tagName.length + 2) , end - (node.tagName.length + 2), hasStart, hasEnd);
-      start = tmp.start == 0 ? 0 : tmp.start - (node.tagName.length + 3);
-      end   = tmp.end   == 0 ? 0 : tmp.end   - (node.tagName.length + 3);
-      hasStart = hasStart | tmp.hasStart;
-      hasEnd   = hasEnd   | tmp.hasEnd;
+  while (walker.current() != undefined && !hasCursor){
+    if (walker.current().outerHTML == undefined){ //se sei in un nodo text
+      let nodeLen = walker.current().textContent.length;
+      console.log(walker.current().textContent, cursor);
+      if (cursor <= nodeLen && !hasCursor) {
+        console.log(cursor);
+        tinymce.activeEditor.selection.setCursorLocation(walker.current(), cursor)
+        hasCursor = true;
+      }
+      cursor -= nodeLen;
+      walker.next();
     }
     else {
-      let nodeLen = node.nodeValue.length;
-
-      if ( start < nodeLen && hasStart == false) { range.setStart(node, start < 0 ? 0 : start); hasStart = true; }
-      if ( end   < nodeLen && hasEnd   == false) { range.setEnd  (node,   end < 0 ? 0 : end);   hasEnd   = true; }
-
-      start -= nodeLen; end -= nodeLen;
+      var nodeLen = walker.current().outerHTML.length;
+      if (cursor < nodeLen) {
+        cursor -= nodeLen - `${walker.current().innerHTML}</${walker.current().tagName}>`.length;
+        walker.next();
+      }
+      else {
+        cursor -= nodeLen;
+        walker = new tinymce.dom.TreeWalker(walker.current().nextSibling);
+      }
     }
-  });
-
-  return ({
-    start    : start,
-    end      : end,
-    hasStart : hasStart,
-    hasEnd   : hasEnd
-  });
+  }
+  console.log(`Cursor set to pos ${cur}`);
 }
 
 tinymce.PluginManager.add('UndoStack', function(editor, url) {
@@ -241,10 +201,10 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
     icon: 'undo',
     tooltip: 'CTRL + Z',
     onAction: function () {
-      undoChange();
+      applyChange("UNDO");
     }
   });
-  editor.shortcuts.add('ctrl+z', "Undo shortcut", function() { undoChange(); });
+  editor.shortcuts.add('ctrl+z', "Undo shortcut", function() { applyChange("UNDO"); });
 
 
   editor.ui.registry.addButton('Custom-Redo', {
@@ -252,12 +212,18 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
     icon: 'redo',
     tooltip: 'CTRL + SHIFT + Z',
     onAction: function () {
-      redoChange();
+      applyChange("REDO");
     }
   });
-  editor.shortcuts.add('ctrl+shift+z', "Redo shortcut", function() { redoChange(); });
+  editor.shortcuts.add('ctrl+shift+z', "Redo shortcut", function() { applyChange("REDO"); });
+
+  editor.on('activate', function() {
+    editor = tinyMCE.activeEditor.iframeElement.contentDocument.body;
+    checkChange();
+  });
 
   editor.on('ExecCommand', function() { catchChange(); });
+  editor.on('keydown', function() { catchChange(); });
 
   return {
     getMetadata: function () {
@@ -265,5 +231,3 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
     }
   };
 });
-
-checkChange();
