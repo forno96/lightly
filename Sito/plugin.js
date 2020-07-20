@@ -57,24 +57,7 @@ class Mechanical {
 oldState = undefined;
 var by = "";
 var mech = new Mechanical();
-var editor;
-
-async function checkChange(){
-  let loaded = false;
-  while (loaded == false) {
-    try {
-      editor = tinyMCE.activeEditor.iframeElement.contentDocument.body;
-      loaded = true;
-    }
-    catch(err) { await delay(200); } // Per dare il tempo a tinyMCE di caricarsi, err sta perchè è supportato solo da ES10
-  }
-
-  catchChange(); // Per caricare lo stato
-  ["keyup", "click", "onclick"].forEach(event => {
-    document.addEventListener(event, catchChange);
-    editor.addEventListener  (event, catchChange);
-  });
-}
+var ed;
 
 function catchState() { return(tinyMCE.activeEditor.dom.doc.body.innerHTML) }
 
@@ -170,10 +153,10 @@ function applyChange(type) {
 }
 
 function setCursorPos(cur){
-  editor.focus();
+  ed.focus();
 
   var range = tinyMCE.activeEditor.selection.getRng();
-  var fullNode = editor.firstChild;
+  var fullNode = ed.firstChild;
   var walker = new tinymce.dom.TreeWalker(fullNode);
 
   var hasCursor = false;
@@ -234,7 +217,13 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
   });
   editor.shortcuts.add('ctrl+shift+z', "Redo shortcut", function() { applyChange("REDO"); });
 
+  editor.on('activate', function() {
+    editor = tinyMCE.activeEditor.iframeElement.contentDocument.body;
+    checkChange();
+  });
+
   editor.on('ExecCommand', function() { catchChange(); });
+  editor.on('keydown', function() { catchChange(); });
 
   return {
     getMetadata: function () {
@@ -242,5 +231,3 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
     }
   };
 });
-
-checkChange();
