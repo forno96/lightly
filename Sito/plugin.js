@@ -142,9 +142,8 @@ function applyChange(type) {
     }
   }
 
-  var cursorPos = add.pos;
-  if (add.content == "&nbsp;") cursorPos += 1;
-  else cursorPos += add.content.length;
+  //state.replace("&nbsp;"," ")
+  var cursorPos = add.pos + add.content.length;
 
   loadState(state);
   setCursorPos(cursorPos);
@@ -166,10 +165,9 @@ function setCursorPos(cur){
 
   while (walker.current() != undefined && !hasCursor){
     if (walker.current().outerHTML == undefined){ //se sei in un nodo text
-      let nodeLen = walker.current().textContent.length;
-      console.log(walker.current().textContent, cursor);
+      let nodeLen = walker.current().valueOf().length;
+      console.log(walker.current())
       if (cursor <= nodeLen && !hasCursor) {
-        console.log(cursor);
         tinymce.activeEditor.selection.setCursorLocation(walker.current(), cursor)
         hasCursor = true;
       }
@@ -178,6 +176,7 @@ function setCursorPos(cur){
     }
     else {
       var nodeLen = walker.current().outerHTML.length;
+      console.log(walker.current().outerHTML);
       if (cursor < nodeLen) {
         cursor -= nodeLen - `${walker.current().innerHTML}</${walker.current().tagName}>`.length;
         walker.next();
