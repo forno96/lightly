@@ -60,13 +60,38 @@ var mech = new Mechanical();
 var ed;
 
 function catchState() { return(tinyMCE.activeEditor.dom.doc.body.innerHTML) }
+function loadState(state) { tinymce.activeEditor.setContent(state); oldState = state; }
 
-function loadState(state) {
-  tinymce.activeEditor.setContent(state);
-  oldState = state;
+function getAbsPos() {
+  // Detemina il nodo dove dovrebbe essere presente il cambiamento in base alla posizione del cursore
+  var r = tinyMCE.activeEditor.selection.getRng().cloneRange();
+
+  let start = r.startOffset;
+  var walker = new tinymce.dom.TreeWalker(r.startContainer);
+  walker.prev();
+  while (walker.current() != undefined && walker.current().tagName != "HEAD"){
+    if (walker.current().outerHTML != undefined) { start += walker.current().outerHTML.length; walker = new tinymce.dom.TreeWalker(walker.current().previousSibling); }
+    else                                         { start += walker.current().nodeValue.length; walker.prev();                                                         }
+  }
+
+  let end = 0;
+  // endContainer potrebbe essere tutto il nodo e quindi fa sbagliare il conto
+  if (r.endContainer == tinyMCE.activeEditor.dom.doc.body.firstChild) { walker = new tinymce.dom.TreeWalker(r.endContainer.childNodes[r.endOffset]); }
+  else                                                                { walker = new tinymce.dom.TreeWalker(r.endContainer); walker.next(); }
+
+  while (walker.current() != undefined){
+    if (walker.current().outerHTML != undefined) { end += walker.current().outerHTML.length; walker = new tinymce.dom.TreeWalker(walker.current().nextSibling); }
+    else                                         { end += walker.current().nodeValue.length; walker.next();                                                     }
+  }
+
+  var state = catchState(), stateLen = state.length-1, endP =  stateLen - end;
+  console.log(`Range is from pos ${start} "${state.slice(sanitize(start-3, stateLen), start) + "[" + state[start] + "]" + state.slice(sanitize(start+1, stateLen), sanitize(start+4,stateLen))}" to pos ${endP} "${state.slice(sanitize(endP-3, stateLen), endP) + "[" + state[endP] + "]" + state.slice(sanitize(endP+1, stateLen), sanitize(endP+4,stateLen))}"`)
+
+  return ({ start: start, end: end });
 }
 
-function catchChange(){ // E' da far cercare il cambiamento solo all'interno di un range definito
+function catchChange(withRange){
+  // Cerca il cambiamento nel range dato
   newState = catchState();
 
   if (oldState == undefined) {
@@ -80,9 +105,16 @@ function catchChange(){ // E' da far cercare il cambiamento solo all'interno di 
     return;
   }
 
-  var start = 0;
-  var newEnd = newState.length -1;
-  var oldEnd = oldState.length -1;
+  var offsetToStart = 0, offsetToEnd = 0;
+  if (withRange == true){ // se voglio cercare nel range ottengo il range da getAbsPos()
+    var ret = getAbsPos();
+    offsetToStart = ret.start;
+    offsetToEnd = ret.end;
+  }
+
+  var start = sanitize(offsetToStart, Math.min(oldState.length, newState.length));
+  var newEnd = newState.length -1 - offsetToEnd;
+  var oldEnd = oldState.length -1 - offsetToEnd;
   while ( start < newState.length && newState[start] == oldState[start] ) start ++;
   while ( newEnd >= start && oldEnd >= start && newState[newEnd] == oldState[oldEnd]) { // se c'è stato quache cambiamento allora è probabile che la lunghezza cambia
     newEnd --;
@@ -216,13 +248,19 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
   });
   editor.shortcuts.add('ctrl+shift+z', "Redo shortcut", function() { applyChange("REDO"); });
 
-  editor.on('activate', function() {
-    editor = tinyMCE.activeEditor.iframeElement.contentDocument.body;
-    checkChange();
+  editor.on('init', function() {
+    ed = tinyMCE.activeEditor.iframeElement.contentDocument.body;
+    catchChange(false);
   });
 
-  editor.on('ExecCommand', function() { catchChange(); });
-  editor.on('keydown', function() { catchChange(); });
+  editor.on('ExecCommand', function(e) {
+    console.log("Event:", e);
+    catchChange(true);
+  });
+  editor.on('keyup', function(e) {
+    console.log("Event:", e);
+    catchChange(true);
+  });
 
   return {
     getMetadata: function () {
