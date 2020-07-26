@@ -7,17 +7,12 @@ function sanitizeID(value){
 
 function getTime(){ return (new Date().toJSON());}
 
-function sanitize (num, max){   // mette il num nel range tra 0 e max
-  num = num < 0 ? 0 : num;      // per far stare il range dentro il contenuto
-  num = num > max ? max : num;
-  return num;
-}
+// mette il num nel range tra 0 e max per far stare il range dentro il contenuto
+function sanitize (num, max){ num = num < 0 ? 0 : num; num = num > max ? max : num; return num; }
 
 const delay = ms => new Promise(res => setTimeout(res, ms));
 
-/*
-INS, DEL
-*/
+// INS, DEL
 class Mechanical {
   constructor(){
     this.editMech = 0;
@@ -49,7 +44,7 @@ class Mechanical {
   }
 
   remRevert(i){ return(this.revertedMech.splice(i,1)[0]); }
-  emptyRevertedMech() {this.revertedMech = [];}
+  emptyRevertedMech() { this.revertedMech = []; }
 }
 
 /* ----- */
@@ -59,11 +54,49 @@ var by = "";
 var mech = new Mechanical();
 var ed;
 
-function catchState() { return(tinyMCE.activeEditor.dom.doc.body.innerHTML) }
+// Cattura lo stato
+function catchState() { return(tinyMCE.activeEditor.dom.doc.body.innerHTML); }
+
+// Carica lo stato
 function loadState(state) { tinymce.activeEditor.setContent(state); oldState = state; }
 
+// Cerca il cambiamento nella stringa e lo salva
+function catchChange(withRange){
+  newState = catchState();
+
+  if (oldState == undefined) { oldState = newState; console.log('State Loaded'); return; }
+
+  if (oldState == newState) { console.log('State Unchanged'); return; }
+
+  var offsetToStart = 0, offsetToEnd = 0;
+  if (withRange == true){ // se voglio cercare nel range ottengo il range da getAbsPos()
+    var ret = getAbsPos();
+    offsetToStart = ret.start;
+    offsetToEnd = ret.end;
+  }
+
+  var start = sanitize(offsetToStart, Math.min(oldState.length, newState.length));
+  var newEnd = newState.length -1 - offsetToEnd;
+  var oldEnd = oldState.length -1 - offsetToEnd;
+  while ( start < newState.length && newState[start] == oldState[start] ) { start ++; }
+  // se c'è stato quache cambiamento allora è probabile che la lunghezza tra le 2 stringhe è cambiata
+  while ( newEnd >= start && oldEnd >= start && newState[newEnd] == oldState[oldEnd]) { newEnd --; oldEnd --;}
+
+  if (start < newState.length) { // Se c'è stato un cambiamento
+    // da inserire il le modifiche di tipo strutturale
+    let del = oldState.slice(start,oldEnd+1);
+    let add = newState.slice(start,newEnd+1);
+    console.log(`State Changed "${del}" into "${add}"`);
+    mech.insItem("DEL", start, del, by);
+    mech.insItem("INS", start, add, by);
+    mech.emptyRevertedMech();   // Se si fanno delle modifiche la coda con gli undo annulati va svuotata
+  }
+
+  oldState = newState;
+}
+
+// Ottieni il blocco della stringa in base alla pos del puntatore
 function getAbsPos() {
-  // Detemina il nodo dove dovrebbe essere presente il cambiamento in base alla posizione del cursore
   var r = tinyMCE.activeEditor.selection.getRng().cloneRange();
 
   let start = r.startOffset;
@@ -85,55 +118,12 @@ function getAbsPos() {
   }
 
   var state = catchState(), stateLen = state.length-1, endP =  stateLen - end;
-  console.log(`Range is from pos ${start} "${state.slice(sanitize(start-3, stateLen), start) + "[" + state[start] + "]" + state.slice(sanitize(start+1, stateLen), sanitize(start+4,stateLen))}" to pos ${endP} "${state.slice(sanitize(endP-3, stateLen), endP) + "[" + state[endP] + "]" + state.slice(sanitize(endP+1, stateLen), sanitize(endP+4,stateLen))}"`)
+  console.log(`Range is from pos ${start} "${state.slice(sanitize(start-3, stateLen), start) + "|" + state[start] + "|" + state.slice(sanitize(start+1, stateLen), sanitize(start+4,stateLen))}" to pos ${endP} "${state.slice(sanitize(endP-3, stateLen), endP) + "|" + state[endP] + "|" + state.slice(sanitize(endP+1, stateLen), sanitize(endP+4,stateLen))}"`)
 
   return ({ start: start, end: end });
 }
 
-function catchChange(withRange){
-  // Cerca il cambiamento nel range dato
-  newState = catchState();
-
-  if (oldState == undefined) {
-    oldState = newState;
-    console.log('State Loaded');
-    return;
-  }
-
-  if (oldState == newState) {
-    console.log('State Unchanged');
-    return;
-  }
-
-  var offsetToStart = 0, offsetToEnd = 0;
-  if (withRange == true){ // se voglio cercare nel range ottengo il range da getAbsPos()
-    var ret = getAbsPos();
-    offsetToStart = ret.start;
-    offsetToEnd = ret.end;
-  }
-
-  var start = sanitize(offsetToStart, Math.min(oldState.length, newState.length));
-  var newEnd = newState.length -1 - offsetToEnd;
-  var oldEnd = oldState.length -1 - offsetToEnd;
-  while ( start < newState.length && newState[start] == oldState[start] ) start ++;
-  while ( newEnd >= start && oldEnd >= start && newState[newEnd] == oldState[oldEnd]) { // se c'è stato quache cambiamento allora è probabile che la lunghezza cambia
-    newEnd --;
-    oldEnd --;
-  }
-
-  if (start < newState.length) { // Se c'è stato un cambiamento
-    // da inserire il le modifiche di tipo strutturale
-    let del = oldState.slice(start,oldEnd+1);
-    let add = newState.slice(start,newEnd+1);
-    console.log(`State Changed    | "${del}" into "${add}"`);
-    mech.insItem("DEL", start, del, by);
-    mech.insItem("INS", start, add, by);
-    mech.emptyRevertedMech();   // Se si fanno delle modifiche la coda con gli undo annulati va svuotata
-  }
-
-  oldState = newState;
-}
-
+// Se viende scatenato prende le ultime due modifiche scritte nella pila scelta in base al tipo (UNDO o REUNDO) e le applica
 function applyChange(type) {
   // Se la pila è vuota undoChange non deve fare nulla
   if (type == "UNDO" && mech.stack.length == 0) {
@@ -183,6 +173,7 @@ function applyChange(type) {
   console.log(`Added "${add.content}" and Removed "${rem.content}"`);
 }
 
+// Mette il cursore sul dom
 function setCursorPos(cur){
   ed.focus();
 
@@ -263,8 +254,6 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
   });
 
   return {
-    getMetadata: function () {
-      return  { name: "Undo stack plugin" };
-    }
+    getMetadata: function () { return  { name: "Undo stack plugin" }; }
   };
 });
