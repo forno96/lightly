@@ -4,6 +4,8 @@
 
 ### Stato della tesi: In Sviluppo
 
+	20-24 Luglio: Aggiunta di un range di ricerca sulla base della posizione del puntatore
+
 	14 Luglio: Prove su ramo FLT e testing sulle performance dello stack re/un-do attuale
  
 	13 Luglio: Riunione con Vitali e testing sulla fattibilità cambio di cattura della modifica 
