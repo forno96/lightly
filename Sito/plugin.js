@@ -91,12 +91,14 @@ function catchChange(pos){
 }
 
 // Ottieni il blocco della stringa in base alla pos del puntatore
-function getAbsPos() {
+function getAbsPos(isSpace) {
+  // Calcolo la posizine dal propi dal numero del carrattere
   var r = tinyMCE.activeEditor.selection.getRng().cloneRange();
 
   // Calcolo start
   let start = 0;
   var walker = new tinymce.dom.TreeWalker(r.startContainer);
+  if (isSpace) walker.prev(); // se viene selezionato solo " " la selezione da problemi perchè se si effettua una modifica collassa su se stesso
   walker.prev();
 
   while (walker.current() != undefined && walker.current().tagName != "HEAD"){
@@ -115,8 +117,33 @@ function getAbsPos() {
   // Calcolo end
   let end = 0;
   // endContainer potrebbe essere tutto il nodo e quindi fa sbagliare il conto
-  if (r.endContainer == tinyMCE.activeEditor.dom.doc.body.firstChild) { walker = new tinymce.dom.TreeWalker(r.endContainer.childNodes[r.endOffset]); }
-  else                                                                { walker = new tinymce.dom.TreeWalker(r.endContainer); walker.next(); }
+  if ( Array.from(tinyMCE.activeEditor.dom.doc.body.children).includes(r.endContainer) ) {
+    // Se sono dentro uno dei nodi principali
+    if ( r.endContainer.childNodes.length > 1 ){
+      // Se i nodi principali hanno dei sottonodi ed quindi endOffset ha senso
+      walker = new tinymce.dom.TreeWalker(r.endContainer.childNodes[r.endOffset]);
+    }
+    else {
+      // Se non ci sono sottonodi endOffset non ha senso, quindi vado al prossimo nodo principale
+      walker = new tinymce.dom.TreeWalker(r.endContainer.nextSibling);
+    }
+  }
+  else if (r.endContainer.toLocaleString() == "[object HTMLElement]") {
+    // Se sono dentro un nodo principale ed è ed il sottonodo non è di tipo testo
+    if (r.endContainer.nextSibling == null) {
+      // Se è l'ultimo sottonodo salto al prissimo nodo principale
+      walker = new tinymce.dom.TreeWalker(r.endContainer.parentElement.nextElementSibling);
+    }
+    else {
+      // Se non è l'ultimo sottonodo vado al fratello
+      walker = new tinymce.dom.TreeWalker(r.endContainer.nextSibling);
+    }
+  }
+  else {
+    // Se sono dentro un nodo di tipo testo
+    walker = new tinymce.dom.TreeWalker(r.endContainer);
+    walker.next();
+  }
 
   while (walker.current() != undefined){
     if (walker.current().outerHTML != undefined) {
@@ -132,15 +159,16 @@ function getAbsPos() {
   }
 
   // Righe per fare un log carino
+  var rng = 3;
   var state = catchState(), stateLen = state.length-1, endP =  stateLen - end;
-  console.log(`Range is from pos ${start} "${state.slice(sanitize(start-3, stateLen), start) + "|" + state[start] + "|" + state.slice(sanitize(start+1, stateLen), sanitize(start+4,stateLen))}" to pos ${endP} "${state.slice(sanitize(endP-3, stateLen), endP) + "|" + state[endP] + "|" + state.slice(sanitize(endP+1, stateLen), sanitize(endP+4,stateLen))}"`)
+  console.log(`Range is from pos ${start} "${state.slice(sanitize(start-rng, stateLen), start) + "|" + state[start] + "|" + state.slice(sanitize(start+1, stateLen), sanitize(start+rng+1,stateLen))}" to pos ${endP} "${state.slice(sanitize(endP-rng, stateLen), endP) + "|" + state[endP] + "|" + state.slice(sanitize(endP+1, stateLen), sanitize(endP+rng+1,stateLen))}"`)
 
   return ({ start: start, end: end });
 }
 
-function pos(event){
+function pos(event, isSpace){
   // se voglio cercare nel range ottengo il range da getAbsPos()
-  if ( event.command!=undefined && event.command!="mceToggleFormat" ) return(getAbsPos());
+  if ( event.command == undefined || event.command != "mceToggleFormat" ) return(getAbsPos(isSpace));
   else return ({ start : 0, end: 0});
 }
 
@@ -265,13 +293,21 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
     catchChange({start : 0, end: 0});
   });
 
+  var isSpace = false;
+  editor.on('BeforeExecCommand', function (){
+    // se viene selezionato solo " " la selezione da problemi e va gestito
+    if (tinymce.activeEditor.selection.getSel().toString() == " ") isSpace = true;
+  });
+
   editor.on('ExecCommand', function(e) {
-    console.log("Event:", e);
-    catchChange(pos(e));
+    //console.log("Event:", e);
+    catchChange(pos(e, isSpace));
+    isSpace = false;
   });
   editor.on('keyup', function(e) {
-    console.log("Event:", e);
-    catchChange(pos(e));
+    //console.log("Event:", e);
+    catchChange(pos(e, isSpace));
+    isSpace = false;
   });
 
   return { getMetadata: function () { return  { name: "Undo stack plugin" }; }};
