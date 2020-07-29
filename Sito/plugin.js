@@ -91,7 +91,9 @@ function catchChange(pos){
 }
 
 // Ottieni il blocco della stringa in base alla pos del puntatore
-function getAbsPos(isSpace) {
+function getAbsPos(event, isSpace) {
+  if ( event.command != undefined && event.command == "mceToggleFormat" ) return ({ start : 0, end: 0});
+
   // Calcolo la posizine dal propi dal numero del carrattere
   var r = tinyMCE.activeEditor.selection.getRng().cloneRange();
 
@@ -166,14 +168,8 @@ function getAbsPos(isSpace) {
   return ({ start: start, end: end });
 }
 
-function pos(event, isSpace){
-  // se voglio cercare nel range ottengo il range da getAbsPos()
-  if ( event.command == undefined || event.command != "mceToggleFormat" ) return(getAbsPos(isSpace));
-  else return ({ start : 0, end: 0});
-}
-
 // Se viende scatenato prende le ultime due modifiche scritte nella pila scelta in base al tipo (UNDO o REUNDO) e le applica
-function applyChange(type) {
+function revertChange(type) {
   // Se la pila è vuota undoChange non deve fare nulla
   if (type == "UNDO" && mech.stack.length == 0) {
     console.log("Undo stack is empty");
@@ -272,10 +268,10 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
     icon: 'undo',
     tooltip: 'CTRL + Z',
     onAction: function () {
-      applyChange("UNDO");
+      revertChange("UNDO");
     }
   });
-  editor.shortcuts.add('ctrl+z', "Undo shortcut", function() { applyChange("UNDO"); });
+  editor.shortcuts.add('ctrl+z', "Undo shortcut", function() { revertChange("UNDO"); });
 
 
   editor.ui.registry.addButton('Custom-Redo', {
@@ -283,10 +279,10 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
     icon: 'redo',
     tooltip: 'CTRL + SHIFT + Z',
     onAction: function () {
-      applyChange("REDO");
+      revertChange("REDO");
     }
   });
-  editor.shortcuts.add('ctrl+shift+z', "Redo shortcut", function() { applyChange("REDO"); });
+  editor.shortcuts.add('ctrl+shift+z', "Redo shortcut", function() { revertChange("REDO"); });
 
   editor.on('init', function() {
     ed = tinyMCE.activeEditor.iframeElement.contentDocument.body;
@@ -301,12 +297,12 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
 
   editor.on('ExecCommand', function(e) {
     //console.log("Event:", e);
-    catchChange(pos(e, isSpace));
+    catchChange(getAbsPos(e, isSpace));
     isSpace = false;
   });
   editor.on('keyup', function(e) {
     //console.log("Event:", e);
-    catchChange(pos(e, isSpace));
+    catchChange(getAbsPos(e, isSpace));
     isSpace = false;
   });
 
