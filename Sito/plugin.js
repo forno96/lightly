@@ -92,18 +92,47 @@ function catchChange(pos){
 
 // Ottieni il blocco della stringa in base alla pos del puntatore
 function getAbsPos(event, isSpace) {
-  if ( event.command != undefined && event.command == "mceToggleFormat" ) return ({ start : 0, end: 0});
-
-  // Calcolo la posizine dal propi dal numero del carrattere
   var r = tinyMCE.activeEditor.selection.getRng().cloneRange();
+  var startContainer, endContainer;
+  var backCycle = 0;
+  if ( event.command != undefined && ( event.command == "mceToggleFormat" || event.command == "JustifyLeft" || event.command == "JustifyCenter" || event.command == "JustifyRight" || event.command == "JustifyFull" )) {
+      // mceToggleFormat ed Justify non va in base alla pos del puntatore ma a tutta la riga
+      startContainer = r.startContainer;
+      while (!Array.from(tinyMCE.activeEditor.dom.doc.body.children).includes(startContainer)){
+        startContainer = startContainer.parentNode;
+      }
+      endContainer = r.endContainer;
+      while (!Array.from(tinyMCE.activeEditor.dom.doc.body.children).includes(endContainer)){
+        endContainer = endContainer.parentNode;
+      }
+      backCycle = 1;
+  }
+  else if (event.code == "Enter") {
+    // l'invio modivica sia il nodo precedente che quello attualmente selezionato
+    startContainer = r.startContainer;
+    while (!Array.from(tinyMCE.activeEditor.dom.doc.body.children).includes(startContainer)){
+      startContainer = startContainer.parentNode;
+    }
+    endContainer = r.endContainer;
+    backCycle = 2;
+  }
+  else {
+    startContainer = r.startContainer;
+    endContainer = r.endContainer;
+  }
+  // Calcolo la posizine dal propi dal numero del carrattere
 
   // Calcolo start
   let start = 0;
-  var walker = new tinymce.dom.TreeWalker(r.startContainer);
+  for (var i = 0; i < backCycle; i++) {
+    if (startContainer.previousSibling != undefined) startContainer = startContainer.previousSibling;
+    else startContainer = startContainer.parentNode;
+  }
+  var walker = new tinymce.dom.TreeWalker(startContainer);
   if (isSpace) walker.prev(); // se viene selezionato solo " " la selezione da problemi perchè se si effettua una modifica collassa su se stesso
-  walker.prev();
+  if (backCycle == 0) walker.prev();
 
-  while (walker.current() != undefined && walker.current().tagName != "HEAD"){
+  while (walker.current() != undefined && walker.current().tagName != "HEAD" && walker.current().tagName != "BODY"){
     if (walker.current().outerHTML != undefined) {
       // Se sono dentro un nodo che ne contiene altri, non ha senso che entro nei sottonodi, prendo la lunghezza totale
       start += walker.current().outerHTML.length;
@@ -117,33 +146,34 @@ function getAbsPos(event, isSpace) {
   }
 
   // Calcolo end
+  // imposto il nodo di partenza
   let end = 0;
   // endContainer potrebbe essere tutto il nodo e quindi fa sbagliare il conto
-  if ( Array.from(tinyMCE.activeEditor.dom.doc.body.children).includes(r.endContainer) ) {
+  if ( Array.from(tinyMCE.activeEditor.dom.doc.body.children).includes(endContainer) ) {
     // Se sono dentro uno dei nodi principali
-    if ( r.endContainer.childNodes.length > 1 ){
+    if ( endContainer.childNodes.length > 1 ){
       // Se i nodi principali hanno dei sottonodi ed quindi endOffset ha senso
-      walker = new tinymce.dom.TreeWalker(r.endContainer.childNodes[r.endOffset]);
+      walker = new tinymce.dom.TreeWalker(endContainer.childNodes[r.endOffset]);
     }
     else {
       // Se non ci sono sottonodi endOffset non ha senso, quindi vado al prossimo nodo principale
-      walker = new tinymce.dom.TreeWalker(r.endContainer.nextSibling);
+      walker = new tinymce.dom.TreeWalker(endContainer.nextSibling);
     }
   }
-  else if (r.endContainer.toLocaleString() == "[object HTMLElement]") {
+  else if (endContainer.toLocaleString() == "[object HTMLElement]") {
     // Se sono dentro un nodo principale ed è ed il sottonodo non è di tipo testo
-    if (r.endContainer.nextSibling == null) {
+    if (endContainer.nextSibling == null) {
       // Se è l'ultimo sottonodo salto al prissimo nodo principale
-      walker = new tinymce.dom.TreeWalker(r.endContainer.parentElement.nextElementSibling);
+      walker = new tinymce.dom.TreeWalker(endContainer.parentElement.nextElementSibling);
     }
     else {
       // Se non è l'ultimo sottonodo vado al fratello
-      walker = new tinymce.dom.TreeWalker(r.endContainer.nextSibling);
+      walker = new tinymce.dom.TreeWalker(endContainer.nextSibling);
     }
   }
   else {
     // Se sono dentro un nodo di tipo testo
-    walker = new tinymce.dom.TreeWalker(r.endContainer);
+    walker = new tinymce.dom.TreeWalker(endContainer);
     walker.next();
   }
 
