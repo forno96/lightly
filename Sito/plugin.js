@@ -330,15 +330,13 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
 
   var startContainer;
   editor.on('keydown', function(e) {
-    var r = tinyMCE.activeEditor.selection.getRng().cloneRange();
+    var r = tinyMCE.activeEditor.selection.getRng();
     startContainer = goToMainNode(r.startContainer);
-    if (startContainer.previousSibling != undefined) startContainer = startContainer.previousSibling;
-    else startContainer = startContainer.parentNode;
   });
   editor.on('keyup', function(e) {
     //console.log("Event:", e);
-    catchChange(getAbsPos(e, isSpace, startContainer));
-    isSpace = false;
+    if (e.code=="Enter") catchChange(getAbsPos(e, false, startContainer));
+    else catchChange(getAbsPos(e, false, undefined));
   });
 
   return { getMetadata: function () { return  { name: "Undo stack plugin" }; }};
