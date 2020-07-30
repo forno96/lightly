@@ -12,6 +12,11 @@ function sanitize (num, max){ num = num < 0 ? 0 : num; num = num > max ? max : n
 
 const delay = ms => new Promise(res => setTimeout(res, ms));
 
+function goToMainNode (node) {
+  while (!Array.from(tinyMCE.activeEditor.dom.doc.body.children).includes(node)) node = node.parentNode;
+  return node;
+}
+
 // INS, DEL
 class Mechanical {
   constructor(){
@@ -92,34 +97,20 @@ function catchChange(pos){
 }
 
 // Ottieni il blocco della stringa in base alla pos del puntatore
-function getAbsPos(event, isSpace) {
+function getAbsPos(event, isSpace, sc) {
   var r = tinyMCE.activeEditor.selection.getRng().cloneRange();
+
   var startContainer, endContainer;
+  if ( sc != undefined ) startContainer = sc;
+  else startContainer = r.startContainer;
+  endContainer = r.endContainer;
+
   var backCycle = 0;
   if ( event.command != undefined && ( event.command == "mceToggleFormat" || event.command == "JustifyLeft" || event.command == "JustifyCenter" || event.command == "JustifyRight" || event.command == "JustifyFull" )) {
       // mceToggleFormat ed Justify non va in base alla pos del puntatore ma a tutta la riga
-      startContainer = r.startContainer;
-      while (!Array.from(tinyMCE.activeEditor.dom.doc.body.children).includes(startContainer)){
-        startContainer = startContainer.parentNode;
-      }
-      endContainer = r.endContainer;
-      while (!Array.from(tinyMCE.activeEditor.dom.doc.body.children).includes(endContainer)){
-        endContainer = endContainer.parentNode;
-      }
+      startContainer = goToMainNode(startContainer);
+      endContainer = goToMainNode(endContainer);
       backCycle = 1;
-  }
-  else if (event.code == "Enter") {
-    // l'invio modivica sia il nodo precedente che quello attualmente selezionato
-    startContainer = r.startContainer;
-    while (!Array.from(tinyMCE.activeEditor.dom.doc.body.children).includes(startContainer)){
-      startContainer = startContainer.parentNode;
-    }
-    endContainer = r.endContainer;
-    backCycle = 2;
-  }
-  else {
-    startContainer = r.startContainer;
-    endContainer = r.endContainer;
   }
   // Calcolo la posizine dal propi dal numero del carrattere
 
@@ -192,7 +183,7 @@ function getAbsPos(event, isSpace) {
   }
 
   // Righe per fare un log carino
-  var rng = 6;
+  var rng = 3;
   var state = catchState(), stateLen = state.length-1, endP =  stateLen - end;
   console.log(`Range is from pos ${start} "${state.slice(sanitize(start-rng, stateLen), start) + "|" + state[start] + "|" + state.slice(sanitize(start+1, stateLen), sanitize(start+rng+1,stateLen))}" to pos ${endP} "${state.slice(sanitize(endP-rng, stateLen), endP) + "|" + state[endP] + "|" + state.slice(sanitize(endP+1, stateLen), sanitize(endP+rng+1,stateLen))}"`)
 
@@ -242,8 +233,11 @@ function revertChange(type) {
     var cursorPos = add.pos + add.content.length;
 
     loadState(state);
+    /*
+    console.log(`%c${state}`,'color: red');
+    console.log(`%c${catchState()}`,'color: red');
+    */
     setCursorPos(cursorPos);
-
     console.log(`Added "${add.content}" and Removed "${rem.content}"`);
   }
 }
@@ -264,7 +258,7 @@ function setCursorPos(cur){
   while (walker.current() != undefined && !hasCursor){
     if (walker.current().outerHTML == undefined){ //se sei in un nodo text
       let nodeLen = walker.current().valueOf().length;
-      console.log(walker.current())
+      //console.log(walker.current())
       if (cursor <= nodeLen && !hasCursor) {
         tinymce.activeEditor.selection.setCursorLocation(walker.current(), cursor)
         hasCursor = true;
@@ -330,12 +324,20 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
 
   editor.on('ExecCommand', function(e) {
     //console.log("Event:", e);
-    catchChange(getAbsPos(e, isSpace));
+    catchChange(getAbsPos(e, isSpace, undefined));
     isSpace = false;
+  });
+
+  var startContainer;
+  editor.on('keydown', function(e) {
+    var r = tinyMCE.activeEditor.selection.getRng().cloneRange();
+    startContainer = goToMainNode(r.startContainer);
+    if (startContainer.previousSibling != undefined) startContainer = startContainer.previousSibling;
+    else startContainer = startContainer.parentNode;
   });
   editor.on('keyup', function(e) {
     //console.log("Event:", e);
-    catchChange(getAbsPos(e, isSpace));
+    catchChange(getAbsPos(e, isSpace, startContainer));
     isSpace = false;
   });
 
