@@ -59,7 +59,7 @@ var ed;
 function catchState() { return(tinyMCE.activeEditor.dom.doc.body.innerHTML); }
 
 // Carica lo stato
-function loadState(state) { tinymce.activeEditor.setContent(state); oldState = state; }
+function loadState(state) { ed.innerHTML = state; oldState = state; }
 
 // Cerca il cambiamento nella stringa e lo salva
 function catchChange(pos){
