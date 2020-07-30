@@ -20,18 +20,19 @@ class Mechanical {
     this.revertedMech = [];
   }
 
-  insItem(op, pos, content, by){
-    this.stackMech.push({
+  insItem(item){ this.stackMech.push(item); }
+
+  createItem(op, pos, content, by){
+    var item = {
       "id": "mech-" + sanitizeID(this.editMech),
       "op": op,
       "pos": pos,
       "content": content,
       "by": by,
       "timestamp": getTime(),
-    });
-
+    };
     this.editMech++;
-    return (this.editMech -1);
+    return item;
   }
 
   get stack() { return(this.stackMech); }
@@ -39,7 +40,7 @@ class Mechanical {
 
   remItem(i) {
     var item = this.stackMech.splice(i,1)[0];
-    this.revertedMech.push(item);
+    this.revertedMech[this.revertedMech.length] = item;
     return(item);
   }
 
@@ -81,8 +82,8 @@ function catchChange(pos){
       let del = oldState.slice(start,oldEnd+1);
       let add = newState.slice(start,newEnd+1);
       console.log(`State Changed "${del}" into "${add}"`);
-      mech.insItem("DEL", start, del, by);
-      mech.insItem("INS", start, add, by);
+      mech.insItem(mech.createItem("DEL", start, del, by));
+      mech.insItem(mech.createItem("INS", start, add, by));
       mech.emptyRevertedMech();   // Se si fanno delle modifiche la coda con gli undo annulati va svuotata
     }
 
@@ -191,7 +192,7 @@ function getAbsPos(event, isSpace) {
   }
 
   // Righe per fare un log carino
-  var rng = 3;
+  var rng = 6;
   var state = catchState(), stateLen = state.length-1, endP =  stateLen - end;
   console.log(`Range is from pos ${start} "${state.slice(sanitize(start-rng, stateLen), start) + "|" + state[start] + "|" + state.slice(sanitize(start+1, stateLen), sanitize(start+rng+1,stateLen))}" to pos ${endP} "${state.slice(sanitize(endP-rng, stateLen), endP) + "|" + state[endP] + "|" + state.slice(sanitize(endP+1, stateLen), sanitize(endP+rng+1,stateLen))}"`)
 
@@ -227,12 +228,12 @@ function revertChange(type) {
         item = mech.remRevert(mech.revertedstack.length - 1);
         if (item.op == "INS") {
           state = state.slice(0, item.pos) + item.content + state.slice(item.pos);
-          mech.insItem("INS", item.pos, item.content, item.by);
+          mech.insItem(item);
           add = item;
         }
         else if (item.op == "DEL") {
           state = state.slice(0, item.pos) + state.slice(item.pos + item.content.length);
-          mech.insItem("DEL", item.pos, item.content, item.by);
+          mech.insItem(item);
           rem = item;
         }
       }
