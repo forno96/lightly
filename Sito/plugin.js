@@ -302,7 +302,8 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
       revertChange("UNDO");
     }
   });
-  editor.shortcuts.add('ctrl+z', "Undo shortcut", function() { revertChange("UNDO"); });
+  editor.shortcuts.add('ctrl+z', "Undo Pc shortcut", function() { revertChange("UNDO"); });
+  editor.shortcuts.add('command+z', "Undo Mac shortcut", function() { revertChange("UNDO"); });
 
 
   editor.ui.registry.addButton('Custom-Redo', {
@@ -313,7 +314,8 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
       revertChange("REDO");
     }
   });
-  editor.shortcuts.add('ctrl+shift+z', "Redo shortcut", function() { revertChange("REDO"); });
+  editor.shortcuts.add('ctrl+y', "Redo Pc shortcut", function() { revertChange("REDO"); });
+  editor.shortcuts.add('command+shift+y', "Redo Mac shortcut", function() { revertChange("REDO"); });
 
   editor.on('init', function() {
     ed = tinyMCE.activeEditor.iframeElement.contentDocument.body;
