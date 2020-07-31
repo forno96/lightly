@@ -17,6 +17,12 @@ function goToMainNode (node) {
   return node;
 }
 
+function stepBackNode (node) {
+  if (node.previousSibling != undefined) node = node.previousSibling;
+  else node = node.parentNode;
+  return node;
+}
+
 // INS, DEL
 class Mechanical {
   constructor(){
@@ -109,36 +115,23 @@ function getAbsPos(event, isSpace, sc) {
   var startContainer = sc==undefined? r.startContainer : sc;
   var endContainer = r.endContainer;
 
-  var backCycle = 0;
   if ( event.command != undefined && ( event.command == "mceToggleFormat" || event.command == "JustifyLeft" || event.command == "JustifyCenter" || event.command == "JustifyRight" || event.command == "JustifyFull" )) {
       // mceToggleFormat ed Justify non va in base alla pos del puntatore ma a tutta la riga
       startContainer = goToMainNode(startContainer);
       endContainer = goToMainNode(endContainer);
-      backCycle = 1;
   }
   // Calcolo la posizine dal propi dal numero del carrattere
 
   // Calcolo start
   let start = 0;
-  for (var i = 0; i < backCycle; i++) {
-    if (startContainer.previousSibling != undefined) startContainer = startContainer.previousSibling;
-    else startContainer = startContainer.parentNode;
-  }
-  var walker = new tinymce.dom.TreeWalker(startContainer);
-  if (isSpace) walker.prev(); // se viene selezionato solo " " la selezione da problemi perchè se si effettua una modifica collassa su se stesso
-  if (backCycle == 0) walker.prev();
+  var walker = stepBackNode(goToMainNode(startContainer));
+  //if (isSpace) startContainer = stepBackNode(startContainer); // se viene selezionato solo " " la selezione da problemi perchè se si effettua una modifica collassa su se stesso
 
-  while (walker.current() != undefined && walker.current().tagName != "HEAD" && walker.current().tagName != "BODY"){
-    if (walker.current().outerHTML != undefined) {
-      // Se sono dentro un nodo che ne contiene altri, non ha senso che entro nei sottonodi, prendo la lunghezza totale
-      start += walker.current().outerHTML.length;
-      walker = new tinymce.dom.TreeWalker(walker.current().previousSibling);
-    }
-    else {
-      // Altrimenti se sono dentro un nodo testo prendo la lungezza della stringa
-      start += walker.current().nodeValue.length;
-      walker.prev();
-    }
+  while (walker != undefined && walker.tagName != "HEAD" && walker.tagName != "BODY"){
+    if (walker.outerHTML != undefined) start += walker.outerHTML.length; // Se sono dentro un nodo che ne contiene altri, non ha senso che entro nei sottonodi, prendo la lunghezza totale
+    else start += walker.nodeValue.length; // Altrimenti se sono dentro un nodo testo prendo la lungezza della stringa
+
+    walker = stepBackNode(walker);
   }
 
   // Calcolo end
@@ -241,7 +234,7 @@ function revertChange(type) {
 }
 
 // Mette il cursore sul dom
-function setCursorPos(map, cur){
+function setCursorPos(map){
   ed.focus();
   var nodeS = ed;
   var mapS = map.start;
@@ -262,6 +255,7 @@ function setCursorPos(map, cur){
   r.setEnd(nodeE,mapE.offset);
 }
 
+// Crea la mappa per essere percorsa da setCursorPos
 function createMap() {
   var r = tinyMCE.activeEditor.selection.getRng().cloneRange();
   var ret = {};
@@ -326,13 +320,13 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
   editor.on('BeforeExecCommand', function (){
     // se viene selezionato solo " " la selezione da problemi e va gestito
     if (tinymce.activeEditor.selection.getSel().toString() == " ") isSpace = true;
-
     map = createMap();
   });
 
   editor.on('ExecCommand', function(e) {
     //console.log("Event:", e);
-    if (e.command != "Delete") catchChange(getAbsPos(e, isSpace, undefined),map);
+    if (e.command != "Delete") catchChange(getAbsPos(e, isSpace, undefined), map);
+    else console.log("Delete!:",map);
     isSpace = false;
   });
 
@@ -342,18 +336,19 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
     keyPressed [e.code] = true;
     var r = tinyMCE.activeEditor.selection.getRng();
     startContainer = goToMainNode(r.startContainer);
-
     map = createMap();
   });
   editor.on('keyup', function(e) {
     //console.log("Event:", e);
-    if (e.code=="Enter" || (keyPressed.ControlLeft==true && keyPressed.KeyV==true)) {
-      catchChange(getAbsPos(e, false, startContainer),map);
+    if (e.code=="Enter" || ((keyPressed.ControlLeft==true || keyPressed.ControlRight==true) && keyPressed.KeyV==true)) {
+      console.log("Copy or Enter Event");
+      catchChange(getAbsPos(e, isSpace, startContainer), map);
     }
     else {
-      catchChange(getAbsPos(e, false, undefined),map);
+      catchChange(getAbsPos(e, isSpace, undefined), map);
     }
     delete keyPressed[e.code];
+    isSpace = false;
   });
 
   return { getMetadata: function () { return  { name: "Undo stack plugin" }; }};
