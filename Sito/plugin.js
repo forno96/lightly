@@ -27,14 +27,15 @@ class Mechanical {
 
   insItem(item){ this.stackMech.push(item); }
 
-  createItem(op, pos, content, by){
+  createItem(op, pos, content, by, map){
     var item = {
-      "id": "mech-" + sanitizeID(this.editMech),
-      "op": op,
-      "pos": pos,
-      "content": content,
-      "by": by,
-      "timestamp": getTime(),
+      id: "mech-" + sanitizeID(this.editMech),
+      op: op,
+      pos: pos,
+      content: content,
+      by: by,
+      timestamp: getTime(),
+      map: map
     };
     this.editMech++;
     return item;
@@ -67,7 +68,7 @@ function catchState() { return(tinyMCE.activeEditor.dom.doc.body.innerHTML); }
 function loadState(state) { ed.innerHTML = state; oldState = state; }
 
 // Cerca il cambiamento nella stringa e lo salva
-function catchChange(pos){
+function catchChange(pos, map){
   newState = catchState();
 
   if (oldState == undefined) { oldState = newState; console.log('State Loaded'); }
@@ -86,8 +87,8 @@ function catchChange(pos){
       // da inserire il le modifiche di tipo strutturale
       let del = oldState.slice(start,oldEnd+1);
       let add = newState.slice(start,newEnd+1);
-      mech.insItem(mech.createItem("DEL", start, del, by));
-      mech.insItem(mech.createItem("INS", start, add, by));
+      mech.insItem(mech.createItem("DEL", start, del, by, map));
+      mech.insItem(mech.createItem("INS", start, add, by, createMap()));
       mech.emptyRevertedMech();   // Se si fanno delle modifiche la coda con gli undo annulati va svuotata
 
       // Righe per fare un log carino
@@ -95,7 +96,6 @@ function catchChange(pos){
       if (del.length > range) dl = del.slice(0,range/2) + "..." + del.slice(del.length -1 -(range/2), del.length -1);
       if (add.length > range) ad = add.slice(0,range/2) + "..." + add.slice(add.length -1 -(range/2), add.length -1);
       console.log(`State Changed "%c${dl}%c" into "%c${ad}%c"`,"color: red","","color: red","");
-
     }
 
     oldState = newState;
@@ -234,52 +234,57 @@ function revertChange(type) {
       }
     }
 
-    var cursorPos = add.pos + add.content.length;
-
     loadState(state);
-    setCursorPos(cursorPos);
+    setCursorPos(add.map);
     console.log(`Added "%c${add.content}%c" and Removed "%c${rem.content}%c"`,"color: red","","color: red","");
   }
 }
 
 // Mette il cursore sul dom
-function setCursorPos(cur){
+function setCursorPos(map, cur){
   ed.focus();
-
-  var range = tinyMCE.activeEditor.selection.getRng();
-  var fullNode = ed.firstChild;
-  var walker = new tinymce.dom.TreeWalker(fullNode);
-
-  var hasCursor = false;
-  var cursor = sanitize (cur - (fullNode.tagName.length + 2), fullNode.innerHTML.length);
-
-  walker.next();
-
-  while (walker.current() != undefined && !hasCursor){
-    if (walker.current().outerHTML == undefined){ //se sei in un nodo text
-      let nodeLen = walker.current().valueOf().length;
-      //console.log(walker.current())
-      if (cursor <= nodeLen && !hasCursor) {
-        tinymce.activeEditor.selection.setCursorLocation(walker.current(), cursor)
-        hasCursor = true;
-      }
-      cursor -= nodeLen;
-      walker.next();
-    }
-    else {
-      var nodeLen = walker.current().outerHTML.length;
-      //console.log(walker.current().outerHTML);
-      if (cursor < nodeLen) {
-        cursor -= nodeLen - `${walker.current().innerHTML}</${walker.current().tagName}>`.length;
-        walker.next();
-      }
-      else {
-        cursor -= nodeLen;
-        walker = new tinymce.dom.TreeWalker(walker.current().nextSibling);
-      }
-    }
+  var nodeS = ed;
+  var mapS = map.start;
+  while (mapS.child != undefined){
+    nodeS = nodeS.childNodes[mapS.offset];
+    mapS = mapS.child;
   }
-  console.log(`Cursor set to pos %c${cur}`,"font-weight: bold");
+
+  var nodeE = ed;
+  var mapE = map.end;
+  while (mapE.child != undefined){
+    nodeE = nodeE.childNodes[mapE.offset];
+    mapE = mapE.child;
+  }
+
+  r = tinyMCE.activeEditor.selection.getRng();
+  r.setStart(nodeS,mapS.offset);
+  r.setEnd(nodeE,mapE.offset);
+}
+
+function createMap() {
+  var r = tinyMCE.activeEditor.selection.getRng().cloneRange();
+  var ret = {};
+
+  var mapS = {child: null, offset: r.startOffset};
+  var node = r.startContainer;
+  do {
+    let index = Array.from(node.parentNode.childNodes).findIndex((elem) => elem == node);
+    mapS = {child: mapS, offset: index};
+    node = node.parentNode;
+  } while (node != ed);
+  ret.start = mapS;
+
+  var mapE = {child: null, offset: r.endOffset};
+  var node = r.endContainer;
+  do {
+    let index = Array.from(node.parentNode.childNodes).findIndex((elem) => elem == node);
+    mapE = {child: mapE, offset: index};
+    node = node.parentNode;
+  } while (node != ed);
+  ret.end = mapE;
+
+  return ret;
 }
 
 tinymce.PluginManager.add('UndoStack', function(editor, url) {
@@ -317,14 +322,17 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
   });
 
   var isSpace = false;
+  var map;
   editor.on('BeforeExecCommand', function (){
     // se viene selezionato solo " " la selezione da problemi e va gestito
     if (tinymce.activeEditor.selection.getSel().toString() == " ") isSpace = true;
+
+    map = createMap();
   });
 
   editor.on('ExecCommand', function(e) {
     //console.log("Event:", e);
-    catchChange(getAbsPos(e, isSpace, undefined));
+    if (e.command != "Delete") catchChange(getAbsPos(e, isSpace, undefined),map);
     isSpace = false;
   });
 
@@ -334,13 +342,17 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
     keyPressed [e.code] = true;
     var r = tinyMCE.activeEditor.selection.getRng();
     startContainer = goToMainNode(r.startContainer);
+
+    map = createMap();
   });
   editor.on('keyup', function(e) {
     //console.log("Event:", e);
     if (e.code=="Enter" || (keyPressed.ControlLeft==true && keyPressed.KeyV==true)) {
-      catchChange(getAbsPos(e, false, startContainer));
+      catchChange(getAbsPos(e, false, startContainer),map);
     }
-    else catchChange(getAbsPos(e, false, undefined));
+    else {
+      catchChange(getAbsPos(e, false, undefined),map);
+    }
     delete keyPressed[e.code];
   });
 
