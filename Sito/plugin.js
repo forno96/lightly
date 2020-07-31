@@ -100,10 +100,8 @@ function catchChange(pos){
 function getAbsPos(event, isSpace, sc) {
   var r = tinyMCE.activeEditor.selection.getRng().cloneRange();
 
-  var startContainer, endContainer;
-  if ( sc != undefined ) startContainer = sc;
-  else startContainer = r.startContainer;
-  endContainer = r.endContainer;
+  var startContainer = sc==undefined? r.startContainer : sc;
+  var endContainer = r.endContainer;
 
   var backCycle = 0;
   if ( event.command != undefined && ( event.command == "mceToggleFormat" || event.command == "JustifyLeft" || event.command == "JustifyCenter" || event.command == "JustifyRight" || event.command == "JustifyFull" )) {
@@ -139,7 +137,6 @@ function getAbsPos(event, isSpace, sc) {
 
   // Calcolo end
   // imposto il nodo di partenza
-  let end = 0;
   // endContainer potrebbe essere tutto il nodo e quindi fa sbagliare il conto
   if ( Array.from(tinyMCE.activeEditor.dom.doc.body.children).includes(endContainer) ) {
     // Se sono dentro uno dei nodi principali
@@ -169,6 +166,7 @@ function getAbsPos(event, isSpace, sc) {
     walker.next();
   }
 
+  let end = 0;
   while (walker.current() != undefined){
     if (walker.current().outerHTML != undefined) {
       // Se sono dentro un nodo che ne contiene altri, non ha senso che entro nei sottonodi, prendo la lunghezza totale
@@ -268,7 +266,7 @@ function setCursorPos(cur){
     }
     else {
       var nodeLen = walker.current().outerHTML.length;
-      console.log(walker.current().outerHTML);
+      //console.log(walker.current().outerHTML);
       if (cursor < nodeLen) {
         cursor -= nodeLen - `${walker.current().innerHTML}</${walker.current().tagName}>`.length;
         walker.next();
@@ -329,14 +327,19 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
   });
 
   var startContainer;
+  var keyPressed = {};
   editor.on('keydown', function(e) {
+    keyPressed [e.code] = true;
     var r = tinyMCE.activeEditor.selection.getRng();
     startContainer = goToMainNode(r.startContainer);
   });
   editor.on('keyup', function(e) {
     //console.log("Event:", e);
-    if (e.code=="Enter") catchChange(getAbsPos(e, false, startContainer));
+    if (e.code=="Enter" || (keyPressed.ControlLeft==true && keyPressed.KeyV==true)) {
+      catchChange(getAbsPos(e, false, startContainer));
+    }
     else catchChange(getAbsPos(e, false, undefined));
+    delete keyPressed[e.code];
   });
 
   return { getMetadata: function () { return  { name: "Undo stack plugin" }; }};
