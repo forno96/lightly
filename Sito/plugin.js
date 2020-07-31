@@ -109,7 +109,7 @@ function catchChange(pos, map){
 }
 
 // Ottieni il blocco della stringa in base alla pos del puntatore
-function getAbsPos(event, isSpace, sc) {
+function getAbsPos(event, sc) {
   var r = tinyMCE.activeEditor.selection.getRng().cloneRange();
 
   var startContainer = sc==undefined? r.startContainer : sc;
@@ -125,7 +125,6 @@ function getAbsPos(event, isSpace, sc) {
   // Calcolo start
   let start = 0;
   var walker = stepBackNode(goToMainNode(startContainer));
-  //if (isSpace) startContainer = stepBackNode(startContainer); // se viene selezionato solo " " la selezione da problemi perchè se si effettua una modifica collassa su se stesso
 
   while (walker != undefined && walker.tagName != "HEAD" && walker.tagName != "BODY"){
     if (walker.outerHTML != undefined) start += walker.outerHTML.length; // Se sono dentro un nodo che ne contiene altri, non ha senso che entro nei sottonodi, prendo la lunghezza totale
@@ -315,19 +314,16 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
     catchChange({start : 0, end: 0});
   });
 
-  var isSpace = false;
   var map;
   editor.on('BeforeExecCommand', function (){
     // se viene selezionato solo " " la selezione da problemi e va gestito
-    if (tinymce.activeEditor.selection.getSel().toString() == " ") isSpace = true;
     map = createMap();
   });
 
   editor.on('ExecCommand', function(e) {
     //console.log("Event:", e);
-    if (e.command != "Delete") catchChange(getAbsPos(e, isSpace, undefined), map);
+    if (e.command != "Delete") catchChange(getAbsPos(e, undefined), map);
     else console.log("Delete!:",map);
-    isSpace = false;
   });
 
   var startContainer;
@@ -342,13 +338,12 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
     //console.log("Event:", e);
     if (e.code=="Enter" || ((keyPressed.ControlLeft==true || keyPressed.ControlRight==true) && keyPressed.KeyV==true)) {
       console.log("Copy or Enter Event");
-      catchChange(getAbsPos(e, isSpace, startContainer), map);
+      catchChange(getAbsPos(e, startContainer), map);
     }
     else {
-      catchChange(getAbsPos(e, isSpace, undefined), map);
+      catchChange(getAbsPos(e, undefined), map);
     }
     delete keyPressed[e.code];
-    isSpace = false;
   });
 
   return { getMetadata: function () { return  { name: "Undo stack plugin" }; }};
