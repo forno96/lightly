@@ -86,10 +86,16 @@ function catchChange(pos){
       // da inserire il le modifiche di tipo strutturale
       let del = oldState.slice(start,oldEnd+1);
       let add = newState.slice(start,newEnd+1);
-      console.log(`State Changed "${del}" into "${add}"`);
       mech.insItem(mech.createItem("DEL", start, del, by));
       mech.insItem(mech.createItem("INS", start, add, by));
       mech.emptyRevertedMech();   // Se si fanno delle modifiche la coda con gli undo annulati va svuotata
+
+      // Righe per fare un log carino
+      var dl = del, ad = add, range = 30;
+      if (del.length > range) dl = del.slice(0,range/2) + "..." + del.slice(del.length -1 -(range/2), del.length -1);
+      if (add.length > range) ad = add.slice(0,range/2) + "..." + add.slice(add.length -1 -(range/2), add.length -1);
+      console.log(`State Changed "%c${dl}%c" into "%c${ad}%c"`,"color: red","","color: red","");
+
     }
 
     oldState = newState;
@@ -183,7 +189,7 @@ function getAbsPos(event, isSpace, sc) {
   // Righe per fare un log carino
   var rng = 3;
   var state = catchState(), stateLen = state.length-1, endP =  stateLen - end;
-  console.log(`Range is from pos ${start} "${state.slice(sanitize(start-rng, stateLen), start) + "|" + state[start] + "|" + state.slice(sanitize(start+1, stateLen), sanitize(start+rng+1,stateLen))}" to pos ${endP} "${state.slice(sanitize(endP-rng, stateLen), endP) + "|" + state[endP] + "|" + state.slice(sanitize(endP+1, stateLen), sanitize(endP+rng+1,stateLen))}"`)
+  console.log(`Range is from pos %c${start}%c "%c${state.slice(sanitize(start-rng, stateLen), start) + "%c|%c" + state[start] + "%c|%c" + state.slice(sanitize(start+1, stateLen), sanitize(start+rng+1,stateLen))}%c" to pos %c${endP}%c "%c${state.slice(sanitize(endP-rng, stateLen), endP) + "%c|%c" + state[endP] + "%c|%c" + state.slice(sanitize(endP+1, stateLen), sanitize(endP+rng+1,stateLen))}%c"`,"font-weight: bold","","color: red","color: grey","color: red","color: grey","color: red","","font-weight: bold","","color: red","color: grey","color: red","color: grey","color: red","")
 
   return ({ start: start, end: end });
 }
@@ -231,12 +237,8 @@ function revertChange(type) {
     var cursorPos = add.pos + add.content.length;
 
     loadState(state);
-    /*
-    console.log(`%c${state}`,'color: red');
-    console.log(`%c${catchState()}`,'color: red');
-    */
     setCursorPos(cursorPos);
-    console.log(`Added "${add.content}" and Removed "${rem.content}"`);
+    console.log(`Added "%c${add.content}%c" and Removed "%c${rem.content}%c"`,"color: red","","color: red","");
   }
 }
 
@@ -277,7 +279,7 @@ function setCursorPos(cur){
       }
     }
   }
-  console.log(`Cursor set to pos ${cur}`);
+  console.log(`Cursor set to pos %c${cur}`,"font-weight: bold");
 }
 
 tinymce.PluginManager.add('UndoStack', function(editor, url) {
