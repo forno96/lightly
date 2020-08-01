@@ -51,7 +51,7 @@ class Mechanical {
       content: content,
       by: by,
       timestamp: getTime(),
-      map: map
+      map: map // serve dell'undo per mettere il cursore esattamente dove stava
     };
     this.editMech++;
     return item;
@@ -272,33 +272,28 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
   });
 
   var map;
-  editor.on('BeforeExecCommand', function (){
-    // se viene selezionato solo " " la selezione da problemi e va gestito
-    map = createMap();
-  });
+  var keyPressed = {};
 
+  editor.on('BeforeExecCommand', function (){ map = createMap(); });
   editor.on('ExecCommand', function(e) {
     //console.log("Event:", e);
-    if (e.command != "Delete") catchChange(getAbsPos(e, undefined), map);
-    else console.log("Delete!:",map);
+    if (e.command != "Delete") catchChange(getAbsPos(undefined), map);
+    else console.log("Delete!:", map);
   });
 
-  var startContainer;
-  var keyPressed = {};
   editor.on('keydown', function(e) {
     keyPressed [e.code] = true;
-    var r = tinyMCE.activeEditor.selection.getRng();
-    startContainer = goToMainNode(r.startContainer);
     map = createMap();
   });
   editor.on('keyup', function(e) {
     //console.log("Event:", e);
     if (e.code=="Enter" || ((keyPressed.ControlLeft==true || keyPressed.ControlRight==true) && keyPressed.KeyV==true)) {
       console.log("Copy or Enter Event");
-      catchChange(getAbsPos(e, startContainer), map);
+      // Con la copia o l'invio ho bisnogno di selezionare il rage dalla posizione del cursore, pima dell'evento, che sta salvato in map.start
+      catchChange(getAbsPos(navigateMap(map.start).node), map);
     }
     else {
-      catchChange(getAbsPos(e, undefined), map);
+      catchChange(getAbsPos(undefined), map);
     }
     delete keyPressed[e.code];
   });
