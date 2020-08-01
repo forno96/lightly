@@ -200,12 +200,16 @@ function revertChange(type) {
 // Mette il cursore sul dom
 function setCursorPos(map){
   ed.focus();
-  var nodeS = navigateMap(map.start);
-  var nodeE = navigateMap(map.end);
+
+  var start = navigateMap(map.start);
+  var end = navigateMap(map.end);
+
+  var sSize = start.node.innerText != null ? start.node.innerText.length : start.node.valueOf().length;
+  var eSize = end.node.innerText != null ? end.node.innerText.length : end.node.valueOf().length;
 
   r = tinyMCE.activeEditor.selection.getRng();
-  r.setStart(nodeS.node, nodeS.offset);
-  r.setEnd(nodeE.node, nodeE.offset);
+  r.setStart(start.node, sanitize(start.offset, sSize));
+  r.setEnd(end.node, sanitize(end.offset, eSize));
 }
 
 // Crea la mappa per essere percorsa da setCursorPos
@@ -230,7 +234,7 @@ function createMap() {
 
 function navigateMap(map){
   var node = ed;
-  while (map.child != undefined){
+  while (map.child != null){
     node = node.childNodes[map.offset];
     map = map.child;
   }
