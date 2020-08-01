@@ -1,31 +1,28 @@
+// Per organizzare mech
 function sanitizeID(value){
   var tmp = value.toFixed().length;
   var ret = '';
   for (var i = 5; i > tmp; i--) {ret += '0';}
   return ret + value;
 }
-
 function getTime(){ return (new Date().toJSON()); }
 
-// mette il num nel range tra 0 e max per far stare il range dentro il contenuto
+// Mette num tra 0 e max
 function sanitize(num, max){ num = num < 0 ? 0 : num; num = num > max ? max : num; return num; }
 
-const delay = ms => new Promise(res => setTimeout(res, ms));
-
 function isMainNode(node){ return(Array.from(tinyMCE.activeEditor.dom.doc.body.children).includes(node)); }
-
 function goToMainNode(node){
   while (!isMainNode(node)) node = node.parentNode;
   return node;
 }
 
+// Si muovono sull'albero di body
 function stepBackNode(node) {
   if (tinyMCE.activeEditor.dom.doc.body == node) return node;
   else if (node.previousSibling != undefined) node = node.previousSibling;
   else node = stepBackNode(node.parentNode);
   return node;
 }
-
 function stepNextNode(node) {
   if (tinyMCE.activeEditor.dom.doc.body == node) return node;
   else if (node.nextSibling != undefined) node = node.nextSibling;
@@ -33,7 +30,31 @@ function stepNextNode(node) {
   return node;
 }
 
-// INS, DEL
+// Funzioni su carico/scarico dello stato
+function catchState() { return(ed.innerHTML); }
+function loadState(state) { ed.innerHTML = state; oldState = state; }
+
+// Ottieni il range dela selezione
+function range(clone){
+  if (clone) return tinyMCE.activeEditor.selection.getRng().cloneRange();
+  else       return tinyMCE.activeEditor.selection.getRng();
+}
+
+// Funzione di download per capire la dimensione di mech e dello stato
+function download(title) {
+  function dw(filename, text) {
+    var element = document.createElement('a');
+    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+    element.setAttribute('download', filename);
+    element.style.display = 'none';
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+  }
+  dw(`state_${title}.txt`, catchState());
+  dw(`mech_${title}.txt`, JSON.stringify(mech));
+}
+
 class Mechanical {
   constructor(){
     this.editMech = 0;
@@ -77,12 +98,6 @@ var by = "";
 var mech = new Mechanical();
 var ed;
 
-// Cattura lo stato
-function catchState() { return(tinyMCE.activeEditor.dom.doc.body.innerHTML); }
-
-// Carica lo stato
-function loadState(state) { ed.innerHTML = state; oldState = state; }
-
 // Cerca il cambiamento nella stringa e lo salva
 function catchChange(pos, map){
   newState = catchState();
@@ -118,49 +133,11 @@ function catchChange(pos, map){
   }
 }
 
-// Ottieni il blocco della stringa in base alla pos del puntatore
-function getAbsPos(sc) {
-  var r = tinyMCE.activeEditor.selection.getRng().cloneRange();
-
-  var startContainer = sc==undefined? r.startContainer : sc;
-  var endContainer = r.endContainer;
-
-  // Calcolo start
-  let start = 0;
-  var walker = stepBackNode(goToMainNode(startContainer));
-  while (walker != null && !Array.from(ed.parentNode.children).includes(walker)){
-    if (walker.outerHTML != undefined) start += walker.outerHTML.length; // Se sono dentro un nodo che ne contiene altri, non ha senso che entro nei sottonodi, prendo la lunghezza totale
-    else start += walker.nodeValue.length; // Altrimenti se sono dentro un nodo testo prendo la lungezza della stringa
-    walker = stepBackNode(walker);
-  }
-
-  let end = 0;
-  var walker = stepNextNode(goToMainNode(endContainer));
-
-  while (walker != null && !Array.from(ed.parentNode.children).includes(walker)){
-    console.log(walker);
-    if (walker.outerHTML != undefined) end += walker.outerHTML.length;
-    else end += walker.nodeValue.length;
-    walker = stepNextNode(walker);
-  }
-
-  // Righe per fare un log carino
-  var rng = 3;
-  var state = catchState(), stateLen = state.length-1, endP =  stateLen - end;
-  console.log(`Range is from pos %c${start}%c "%c${state.slice(sanitize(start-rng, stateLen), start) + "%c|%c" + state[start] + "%c|%c" + state.slice(sanitize(start+1, stateLen), sanitize(start+rng+1,stateLen))}%c" to pos %c${endP}%c "%c${state.slice(sanitize(endP-rng, stateLen), endP) + "%c|%c" + state[endP] + "%c|%c" + state.slice(sanitize(endP+1, stateLen), sanitize(endP+rng+1,stateLen))}%c"`,"font-weight: bold","","color: red","color: grey","color: red","color: grey","color: red","","font-weight: bold","","color: red","color: grey","color: red","color: grey","color: red","")
-
-  return ({ start: start, end: end });
-}
-
 // Se viende scatenato prende le ultime due modifiche scritte nella pila scelta in base al tipo (UNDO o REUNDO) e le applica
 function revertChange(type) {
   // Se la pila è vuota undoChange non deve fare nulla
-  if (type == "UNDO" && mech.stack.length == 0) {
-    console.log("Undo stack is empty");
-  }
-  else if (type == "REDO" && mech.revertedstack.length == 0) {
-    console.log("Redo stack is empty");
-  }
+  if (type == "UNDO" && mech.stack.length == 0) console.log("Undo stack is empty");
+  else if (type == "REDO" && mech.revertedstack.length == 0) console.log("Redo stack is empty");
   else {
     state = catchState();
     var add, rem;
@@ -193,9 +170,43 @@ function revertChange(type) {
     }
 
     loadState(state);
-    setCursorPos(add.map);
     console.log(`Added "%c${add.content}%c" and Removed "%c${rem.content}%c"`,"color: red","","color: red","");
+
+    setCursorPos(add.map);
   }
+}
+
+// Ottieni il blocco della stringa in base alla pos del puntatore
+function getAbsPos(sc) {
+  var r = range(true);
+
+  var startContainer = sc==undefined? r.startContainer : sc;
+  var endContainer = r.endContainer;
+
+  // Calcolo start
+  let start = 0;
+  var walker = stepBackNode(goToMainNode(startContainer));
+  while (walker != null && !Array.from(ed.parentNode.children).includes(walker)){
+    if (walker.outerHTML != undefined) start += walker.outerHTML.length; // Se sono dentro un nodo che ne contiene altri, non ha senso che entro nei sottonodi, prendo la lunghezza totale
+    else start += walker.nodeValue.length; // Altrimenti se sono dentro un nodo testo prendo la lungezza della stringa
+    walker = stepBackNode(walker);
+  }
+
+  let end = 0;
+  var walker = stepNextNode(goToMainNode(endContainer));
+
+  while (walker != null && !Array.from(ed.parentNode.children).includes(walker)){
+    if (walker.outerHTML != undefined) end += walker.outerHTML.length;
+    else end += walker.nodeValue.length;
+    walker = stepNextNode(walker);
+  }
+
+  // Righe per fare un log carino
+  var rng = 3;
+  var state = catchState(), stateLen = state.length-1, endP =  stateLen - end;
+  console.log(`Range is from pos %c${start}%c "%c${state.slice(sanitize(start-rng, stateLen), start) + "%c|%c" + state[start] + "%c|%c" + state.slice(sanitize(start+1, stateLen), sanitize(start+rng+1,stateLen))}%c" to pos %c${endP}%c "%c${state.slice(sanitize(endP-rng, stateLen), endP) + "%c|%c" + state[endP] + "%c|%c" + state.slice(sanitize(endP+1, stateLen), sanitize(endP+rng+1,stateLen))}%c"`,"font-weight: bold","","color: red","color: grey","color: red","color: grey","color: red","","font-weight: bold","","color: red","color: grey","color: red","color: grey","color: red","")
+
+  return ({ start: start, end: end });
 }
 
 // Mette il cursore sul dom
@@ -208,12 +219,14 @@ function setCursorPos(map){
   var sSize = start.node.innerText != null ? start.node.innerText.length : start.node.valueOf().length;
   var eSize = end.node.innerText != null ? end.node.innerText.length : end.node.valueOf().length;
 
-  r = tinyMCE.activeEditor.selection.getRng();
+  r = range();
   r.setStart(start.node, sanitize(start.offset, sSize));
   r.setEnd(end.node, sanitize(end.offset, eSize));
+
+  console.log("Cursor set");
 }
 
-// Crea la mappa per essere percorsa da setCursorPos
+// Map serve per ottenere la posizione dei nodi
 function createMap() {
   function genBracket(node, offset){
     var map = {child: null, offset: offset};
@@ -226,17 +239,17 @@ function createMap() {
   }
 
   var ret = {};
-  var r = tinyMCE.activeEditor.selection.getRng().cloneRange();
+  var r = range(true);
   ret.start = genBracket(r.startContainer, r.startOffset);
   ret.end = genBracket(r.endContainer, r.endOffset);
 
   return ret;
 }
-
 function navigateMap(map){
   var node = ed;
   while (map.child != null){
-    node = node.childNodes[map.offset];
+    let of = sanitize(map.offset, node.childNodes.length-1);
+    node = node.childNodes[of];
     map = map.child;
   }
   return {node: node, offset: map.offset};
@@ -252,9 +265,7 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
     text: 'Undo',
     icon: 'undo',
     tooltip: 'CTRL + Z',
-    onAction: function () {
-      revertChange("UNDO");
-    }
+    onAction: function () { revertChange("UNDO"); }
   });
   editor.shortcuts.add('ctrl+z', "Undo Pc shortcut", function() { revertChange("UNDO"); });
   editor.shortcuts.add('command+z', "Undo Mac shortcut", function() { revertChange("UNDO"); });
@@ -264,9 +275,7 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
     text: 'Redo',
     icon: 'redo',
     tooltip: 'CTRL + SHIFT + Z',
-    onAction: function () {
-      revertChange("REDO");
-    }
+    onAction: function () { revertChange("REDO"); }
   });
   editor.shortcuts.add('ctrl+y', "Redo Pc shortcut", function() { revertChange("REDO"); });
   editor.shortcuts.add('command+shift+y', "Redo Mac shortcut", function() { revertChange("REDO"); });
