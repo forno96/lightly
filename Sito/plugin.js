@@ -200,49 +200,41 @@ function revertChange(type) {
 // Mette il cursore sul dom
 function setCursorPos(map){
   ed.focus();
-  var nodeS = ed;
-  var mapS = map.start;
-  while (mapS.child != undefined){
-    nodeS = nodeS.childNodes[mapS.offset];
-    mapS = mapS.child;
-  }
-
-  var nodeE = ed;
-  var mapE = map.end;
-  while (mapE.child != undefined){
-    nodeE = nodeE.childNodes[mapE.offset];
-    mapE = mapE.child;
-  }
+  var nodeS = navigateMap(map.start);
+  var nodeE = navigateMap(map.end);
 
   r = tinyMCE.activeEditor.selection.getRng();
-  r.setStart(nodeS,mapS.offset);
-  r.setEnd(nodeE,mapE.offset);
+  r.setStart(nodeS.node, nodeS.offset);
+  r.setEnd(nodeE.node, nodeE.offset);
 }
 
 // Crea la mappa per essere percorsa da setCursorPos
 function createMap() {
-  var r = tinyMCE.activeEditor.selection.getRng().cloneRange();
+  function genBracket(node, offset){
+    var map = {child: null, offset: offset};
+    do {
+      let index = Array.from(node.parentNode.childNodes).findIndex((elem) => elem == node);
+      map = {child: map, offset: index};
+      node = node.parentNode;
+    } while (node != ed);
+    return (map);
+  }
+
   var ret = {};
-
-  var mapS = {child: null, offset: r.startOffset};
-  var node = r.startContainer;
-  do {
-    let index = Array.from(node.parentNode.childNodes).findIndex((elem) => elem == node);
-    mapS = {child: mapS, offset: index};
-    node = node.parentNode;
-  } while (node != ed);
-  ret.start = mapS;
-
-  var mapE = {child: null, offset: r.endOffset};
-  var node = r.endContainer;
-  do {
-    let index = Array.from(node.parentNode.childNodes).findIndex((elem) => elem == node);
-    mapE = {child: mapE, offset: index};
-    node = node.parentNode;
-  } while (node != ed);
-  ret.end = mapE;
+  var r = tinyMCE.activeEditor.selection.getRng().cloneRange();
+  ret.start = genBracket(r.startContainer, r.startOffset);
+  ret.end = genBracket(r.endContainer, r.endOffset);
 
   return ret;
+}
+
+function navigateMap(map){
+  var node = ed;
+  while (map.child != undefined){
+    node = node.childNodes[map.offset];
+    map = map.child;
+  }
+  return {node: node, offset: map.offset};
 }
 
 tinymce.PluginManager.add('UndoStack', function(editor, url) {
