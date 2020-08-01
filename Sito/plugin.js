@@ -5,10 +5,10 @@ function sanitizeID(value){
   return ret + value;
 }
 
-function getTime(){ return (new Date().toJSON());}
+function getTime(){ return (new Date().toJSON()); }
 
 // mette il num nel range tra 0 e max per far stare il range dentro il contenuto
-function sanitize (num, max){ num = num < 0 ? 0 : num; num = num > max ? max : num; return num; }
+function sanitize(num, max){ num = num < 0 ? 0 : num; num = num > max ? max : num; return num; }
 
 const delay = ms => new Promise(res => setTimeout(res, ms));
 
@@ -128,7 +128,7 @@ function getAbsPos(sc) {
   // Calcolo start
   let start = 0;
   var walker = stepBackNode(goToMainNode(startContainer));
-  while (walker != null && walker.tagName != "HEAD" && walker.tagName != "BODY"){
+  while (walker != null && !Array.from(ed.parentNode.children).includes(walker)){
     if (walker.outerHTML != undefined) start += walker.outerHTML.length; // Se sono dentro un nodo che ne contiene altri, non ha senso che entro nei sottonodi, prendo la lunghezza totale
     else start += walker.nodeValue.length; // Altrimenti se sono dentro un nodo testo prendo la lungezza della stringa
     walker = stepBackNode(walker);
@@ -136,7 +136,8 @@ function getAbsPos(sc) {
 
   let end = 0;
   var walker = stepNextNode(goToMainNode(endContainer));
-  while (walker != null && walker.tagName != "HEAD" && walker.tagName != "BODY"){
+
+  while (walker != null && !Array.from(ed.parentNode.children).includes(walker)){
     console.log(walker);
     if (walker.outerHTML != undefined) end += walker.outerHTML.length;
     else end += walker.nodeValue.length;
