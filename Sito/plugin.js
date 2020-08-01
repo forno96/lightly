@@ -12,14 +12,24 @@ function sanitize (num, max){ num = num < 0 ? 0 : num; num = num > max ? max : n
 
 const delay = ms => new Promise(res => setTimeout(res, ms));
 
-function goToMainNode (node) {
-  while (!Array.from(tinyMCE.activeEditor.dom.doc.body.children).includes(node)) node = node.parentNode;
+function isMainNode(node){ return(Array.from(tinyMCE.activeEditor.dom.doc.body.children).includes(node)); }
+
+function goToMainNode(node){
+  while (!isMainNode(node)) node = node.parentNode;
   return node;
 }
 
-function stepBackNode (node) {
-  if (node.previousSibling != undefined) node = node.previousSibling;
-  else node = node.parentNode;
+function stepBackNode(node) {
+  if (tinyMCE.activeEditor.dom.doc.body == node) return node;
+  else if (node.previousSibling != undefined) node = node.previousSibling;
+  else node = stepBackNode(node.parentNode);
+  return node;
+}
+
+function stepNextNode(node) {
+  if (tinyMCE.activeEditor.dom.doc.body == node) return node;
+  else if (node.nextSibling != undefined) node = node.nextSibling;
+  else node = stepBackNode(node.parentNode);
   return node;
 }
 
@@ -109,73 +119,28 @@ function catchChange(pos, map){
 }
 
 // Ottieni il blocco della stringa in base alla pos del puntatore
-function getAbsPos(event, sc) {
+function getAbsPos(sc) {
   var r = tinyMCE.activeEditor.selection.getRng().cloneRange();
 
   var startContainer = sc==undefined? r.startContainer : sc;
   var endContainer = r.endContainer;
 
-  if ( event.command != undefined && ( event.command == "mceToggleFormat" || event.command == "JustifyLeft" || event.command == "JustifyCenter" || event.command == "JustifyRight" || event.command == "JustifyFull" )) {
-      // mceToggleFormat ed Justify non va in base alla pos del puntatore ma a tutta la riga
-      startContainer = goToMainNode(startContainer);
-      endContainer = goToMainNode(endContainer);
-  }
-  // Calcolo la posizine dal propi dal numero del carrattere
-
   // Calcolo start
   let start = 0;
   var walker = stepBackNode(goToMainNode(startContainer));
-
-  while (walker != undefined && walker.tagName != "HEAD" && walker.tagName != "BODY"){
+  while (walker != null && walker.tagName != "HEAD" && walker.tagName != "BODY"){
     if (walker.outerHTML != undefined) start += walker.outerHTML.length; // Se sono dentro un nodo che ne contiene altri, non ha senso che entro nei sottonodi, prendo la lunghezza totale
     else start += walker.nodeValue.length; // Altrimenti se sono dentro un nodo testo prendo la lungezza della stringa
-
     walker = stepBackNode(walker);
   }
 
-  // Calcolo end
-  // imposto il nodo di partenza
-  // endContainer potrebbe essere tutto il nodo e quindi fa sbagliare il conto
-  if ( Array.from(tinyMCE.activeEditor.dom.doc.body.children).includes(endContainer) ) {
-    // Se sono dentro uno dei nodi principali
-    if ( endContainer.childNodes.length > 1 ){
-      // Se i nodi principali hanno dei sottonodi ed quindi endOffset ha senso
-      walker = new tinymce.dom.TreeWalker(endContainer.childNodes[r.endOffset]);
-    }
-    else {
-      // Se non ci sono sottonodi endOffset non ha senso, quindi vado al prossimo nodo principale
-      walker = new tinymce.dom.TreeWalker(endContainer.nextSibling);
-    }
-  }
-  else if (endContainer.toLocaleString() == "[object HTMLElement]") {
-    // Se sono dentro un nodo principale ed è ed il sottonodo non è di tipo testo
-    if (endContainer.nextSibling == null) {
-      // Se è l'ultimo sottonodo salto al prissimo nodo principale
-      walker = new tinymce.dom.TreeWalker(endContainer.parentElement.nextElementSibling);
-    }
-    else {
-      // Se non è l'ultimo sottonodo vado al fratello
-      walker = new tinymce.dom.TreeWalker(endContainer.nextSibling);
-    }
-  }
-  else {
-    // Se sono dentro un nodo di tipo testo
-    walker = new tinymce.dom.TreeWalker(endContainer);
-    walker.next();
-  }
-
   let end = 0;
-  while (walker.current() != undefined){
-    if (walker.current().outerHTML != undefined) {
-      // Se sono dentro un nodo che ne contiene altri, non ha senso che entro nei sottonodi, prendo la lunghezza totale
-      end += walker.current().outerHTML.length;
-      walker = new tinymce.dom.TreeWalker(walker.current().nextSibling);
-    }
-    else {
-      // Altrimenti se sono dentro un nodo testo prendo la lungezza della stringa
-      end += walker.current().nodeValue.length;
-      walker.next();
-    }
+  var walker = stepNextNode(goToMainNode(endContainer));
+  while (walker != null && walker.tagName != "HEAD" && walker.tagName != "BODY"){
+    console.log(walker);
+    if (walker.outerHTML != undefined) end += walker.outerHTML.length;
+    else end += walker.nodeValue.length;
+    walker = stepNextNode(walker);
   }
 
   // Righe per fare un log carino
