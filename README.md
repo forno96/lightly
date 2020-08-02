@@ -4,6 +4,9 @@
 
 ### Stato della tesi: In Sviluppo
 
+	27-31 Luglio: C'è stata una pesante ricostruzione del codice per catturare la porzione da controllare,
+	ora è molto più semplice, intuibile e da molti meno errore, come al solito KISS
+	
 	20-24 Luglio: Aggiunta di un range di ricerca sulla base della posizione del puntatore
 
 	14 Luglio: Prove su ramo FLT e testing sulle performance dello stack re/un-do attuale
@@ -29,8 +32,8 @@
     
 	12 Giugno: Colloquio col professore per definire passi e svliuppi:
 		È necessario acere uno spazio web dedicato deove mettere il test del sito
-		Bisogna salvare le modifiche utilizzado minore memoria possibile
-		le modifiche possono avvenire per via tastiera o per via bottoni
+		Bisogna salvare le modifiche utilizzado minore memoria possibile le modifiche
+		possono avvenire per via tastiera o per via bottoni
 
 	Febbraio 2020: Inizio sviluppo della struttura a classi.
 
