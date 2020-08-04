@@ -1,54 +1,3 @@
-// Per organizzare mech
-function sanitizeID(value){ return "0".repeat( sanitize(5-value.toString().length, 5) ) + value; }
-function getTime(){ return (new Date().toJSON()); }
-
-// Mette num tra 0 e max
-function sanitize(num, max){ if(num<0){num = 0;} else if(num>max){num = max;} return num; }
-
-// Ottieni i nodi principali
-function isMainNode(node){ return(Array.from(tinyMCE.activeEditor.dom.doc.body.children).includes(node)); }
-function goToMainNode(node){ while ( !isMainNode(node) ) { node = node.parentNode; } return node; }
-
-// Si muovono sull'albero di body
-function stepBackNode(node) {
-  if (ed == node) return node;
-  else if (node.previousSibling != undefined) node = node.previousSibling;
-  else node = stepBackNode(node.parentNode);
-  return node;
-}
-function stepNextNode(node) {
-  if (ed == node) return node;
-  else if (node.nextSibling != undefined) node = node.nextSibling;
-  else node = stepBackNode(node.parentNode);
-  return node;
-}
-
-// Funzioni su carico/scarico dello stato
-function catchState() { return(ed.innerHTML); }
-function loadState(state) { ed.innerHTML = state; oldState = state; }
-
-// Ottieni il range dela selezione
-// Rimossa l'opzione del clone
-function range() { return tinyMCE.activeEditor.selection.getRng(); }
-
-// Per il log
-function cutString(str, size) { if (str.length > size + 3){str = str.slice(0,size/2) + "..." + str.slice(str.length-(size/2), str.length);} return str; }
-
-// Funzione di download per capire la dimensione di mech e dello stato
-function download(title) {
-  function dw(filename, text) {
-    var element = document.createElement('a');
-    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
-    element.setAttribute('download', filename);
-    element.style.display = 'none';
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
-  }
-  dw(`state_${title}.txt`, catchState());
-  dw(`mech_${title}.txt`, JSON.stringify(mech));
-}
-
 class Mechanical {
   constructor(){
     this.editMech = 0;
@@ -85,7 +34,6 @@ class Mechanical {
   emptyRevertedMech() { this.revertedMech = []; }
 }
 
-/* ----- */
 // INIT CLASS and VAR
 oldState = undefined;
 var by = "";
@@ -311,3 +259,54 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
 
   return { getMetadata: function () { return  { name: "Undo stack plugin" }; }};
 });
+
+// Per organizzare mech
+function sanitizeID(value){ return "0".repeat( sanitize(5-value.toString().length, 5) ) + value; }
+function getTime(){ return (new Date().toJSON()); }
+
+// Mette num tra 0 e max
+function sanitize(num, max){ if(num<0){num = 0;} else if(num>max){num = max;} return num; }
+
+// Ottieni i nodi principali
+function isMainNode(node){ return(Array.from(tinyMCE.activeEditor.dom.doc.body.children).includes(node)); }
+function goToMainNode(node){ while ( !isMainNode(node) ) { node = node.parentNode; } return node; }
+
+// Si muovono sull'albero di body
+function stepBackNode(node) {
+  if (ed == node) return node;
+  else if (node.previousSibling != undefined) node = node.previousSibling;
+  else node = stepBackNode(node.parentNode);
+  return node;
+}
+function stepNextNode(node) {
+  if (ed == node) return node;
+  else if (node.nextSibling != undefined) node = node.nextSibling;
+  else node = stepBackNode(node.parentNode);
+  return node;
+}
+
+// Funzioni su carico/scarico dello stato
+function catchState() { return(ed.innerHTML); }
+function loadState(state) { ed.innerHTML = state; oldState = state; }
+
+// Ottieni il range dela selezione
+// Rimossa l'opzione del clone
+function range() { return tinyMCE.activeEditor.selection.getRng(); }
+
+// Per il log
+function cutString(str, size) { if (str.length > size + 3){str = str.slice(0,size/2) + "..." + str.slice(str.length-(size/2), str.length);} return str; }
+
+// Funzione di download per capire la dimensione di mech e dello stato
+function download(title) {
+  function dw(filename, text) {
+    var element = document.createElement('a');
+    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+    element.setAttribute('download', filename);
+    element.style.display = 'none';
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+  }
+  dw(`state_${title}.txt`, catchState());
+  dw(`mech_${title}.txt`, JSON.stringify(mech));
+}
