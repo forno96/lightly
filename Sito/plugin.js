@@ -1,30 +1,23 @@
 // Per organizzare mech
-function sanitizeID(value){
-  var tmp = value.toFixed().length;
-  var ret = '';
-  for (var i = 5; i > tmp; i--) {ret += '0';}
-  return ret + value;
-}
+function sanitizeID(value){ return "0".repeat( sanitize(5-value.toString().length, 5) ) + value; }
 function getTime(){ return (new Date().toJSON()); }
 
 // Mette num tra 0 e max
-function sanitize(num, max){ num = num < 0 ? 0 : num; num = num > max ? max : num; return num; }
+function sanitize(num, max){ if(num<0){num = 0;} else if(num>max){num = max;} return num; }
 
+// Ottieni i nodi principali
 function isMainNode(node){ return(Array.from(tinyMCE.activeEditor.dom.doc.body.children).includes(node)); }
-function goToMainNode(node){
-  while (!isMainNode(node)) node = node.parentNode;
-  return node;
-}
+function goToMainNode(node){ while ( !isMainNode(node) ) { node = node.parentNode; } return node; }
 
 // Si muovono sull'albero di body
 function stepBackNode(node) {
-  if (tinyMCE.activeEditor.dom.doc.body == node) return node;
+  if (ed == node) return node;
   else if (node.previousSibling != undefined) node = node.previousSibling;
   else node = stepBackNode(node.parentNode);
   return node;
 }
 function stepNextNode(node) {
-  if (tinyMCE.activeEditor.dom.doc.body == node) return node;
+  if (ed == node) return node;
   else if (node.nextSibling != undefined) node = node.nextSibling;
   else node = stepBackNode(node.parentNode);
   return node;
@@ -35,10 +28,8 @@ function catchState() { return(ed.innerHTML); }
 function loadState(state) { ed.innerHTML = state; oldState = state; }
 
 // Ottieni il range dela selezione
-function range(clone){
-  if (clone) return tinyMCE.activeEditor.selection.getRng().cloneRange();
-  else       return tinyMCE.activeEditor.selection.getRng();
-}
+// Rimossa l'opzione del clone
+function range() { return tinyMCE.activeEditor.selection.getRng(); }
 
 // Funzione di download per capire la dimensione di mech e dello stato
 function download(title) {
@@ -123,10 +114,10 @@ function catchChange(pos, map){
       mech.emptyRevertedMech();   // Se si fanno delle modifiche la coda con gli undo annulati va svuotata
 
       // Righe per fare un log carino
-      var dl = del.length, ad = add.length, range = 30;
-      if (dl > range + 3) dl = del.slice(0,range/2) + "..." + del.slice(dl-1-(range/2), dl-1);
-      if (ad > range + 3) ad = add.slice(0,range/2) + "..." + add.slice(ad-1-(range/2), ad-1);
-      console.log(`State Changed "%c${dl}%c" into "%c${ad}%c at pos %c${start}`,"color: red","","color: red","","font-weight: bold");
+      var dl = del, ad = add, range = 30;
+      if (dl.length > range + 3) dl = del.slice(0,range/2) + "..." + del.slice(dl.length-1-(range/2), dl.length);
+      if (ad.length > range + 3) ad = add.slice(0,range/2) + "..." + add.slice(ad.length-1-(range/2), ad.length);
+      console.log(`State Changed "%c${dl}%c" into "%c${ad}%c" at pos %c${start}`,"color: red","","color: red","","font-weight: bold");
     }
 
     oldState = newState;
@@ -173,8 +164,8 @@ function revertChange(type) {
 
     // Riche per fare un log carino
     var a = add.content, r = rem.content, range = 30;
-    if (a.length > range + 3) a = a.slice(0,range/2) + "..." + a.slice(a.length -1 -(range/2), a.length -1);
-    if (r.length > range + 3) r = r.slice(0,range/2) + "..." + r.slice(r.length -1 -(range/2), r.length -1);
+    if (a.length > range + 3) a = a.slice(0,range/2) + "..." + a.slice(a.length -1 -(range/2), a.length);
+    if (r.length > range + 3) r = r.slice(0,range/2) + "..." + r.slice(r.length -1 -(range/2), r.length);
     console.log(`Added "%c${a}%c" and Removed "%c${r}%c" at pos %c${add.pos}`,"color: red","","color: red","","font-weight: bold");
 
     setCursorPos(add.map);
@@ -183,7 +174,7 @@ function revertChange(type) {
 
 // Ottieni il blocco della stringa in base alla pos del puntatore
 function getAbsPos(sc) {
-  var r = range(true);
+  var r = range();
 
   var startContainer = sc==undefined? r.startContainer : sc;
   var endContainer = r.endContainer;
@@ -207,9 +198,9 @@ function getAbsPos(sc) {
   }
 
   // Righe per fare un log carino
-  var rng = 3;
+  var rng = 4;
   var state = catchState(), stateLen = state.length-1, endP =  stateLen - end;
-  console.log(`Range is from pos %c${start}%c "%c${state.slice(sanitize(start-rng, stateLen), start) + "%c|%c" + state[start] + "%c|%c" + state.slice(sanitize(start+1, stateLen), sanitize(start+rng+1,stateLen))}%c" to pos %c${endP}%c "%c${state.slice(sanitize(endP-rng, stateLen), endP) + "%c|%c" + state[endP] + "%c|%c" + state.slice(sanitize(endP+1, stateLen), sanitize(endP+rng+1,stateLen))}%c"`,"font-weight: bold","","color: red","color: grey","color: red","color: grey","color: red","","font-weight: bold","","color: red","color: grey","color: red","color: grey","color: red","")
+  console.log(`Range is from pos %c${start}%c "%c${state.slice(sanitize(start-rng, stateLen), start) + "%c[%c" + state[start] + "%c]%c" + state.slice(sanitize(start+1, stateLen), sanitize(start+rng+1,stateLen))}%c" to pos %c${endP}%c "%c${state.slice(sanitize(endP-rng, stateLen), endP) + "%c[%c" + state[endP] + "%c]%c" + state.slice(sanitize(endP+1, stateLen), sanitize(endP+rng+1,stateLen))}%c"`,"font-weight: bold","","color: red","color: grey","color: red","color: grey","color: red","","font-weight: bold","","color: red","color: grey","color: red","color: grey","color: red","")
 
   return ({ start: start, end: end });
 }
@@ -244,7 +235,7 @@ function createMap() {
   }
 
   var ret = {};
-  var r = range(true);
+  var r = range();
   ret.start = genBracket(r.startContainer, r.startOffset);
   ret.end = genBracket(r.endContainer, r.endOffset);
 
@@ -283,37 +274,41 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
     onAction: function () { revertChange("REDO"); }
   });
   editor.shortcuts.add('ctrl+y', "Redo Pc shortcut", function() { revertChange("REDO"); });
-  editor.shortcuts.add('command+shift+y', "Redo Mac shortcut", function() { revertChange("REDO"); });
+  editor.shortcuts.add('command+y', "Redo Mac shortcut", function() { revertChange("REDO"); });
 
   editor.on('init', function() {
-    ed = tinyMCE.activeEditor.iframeElement.contentDocument.body;
+    ed = tinyMCE.activeEditor.dom.doc.body;
     catchChange({start : 0, end: 0});
   });
 
-  var map;
+  var saveMap;
   var keyPressed = {};
 
-  editor.on('BeforeExecCommand', function (){ map = createMap(); });
+  editor.on('BeforeExecCommand', function (){ saveMap = createMap(); });
   editor.on('ExecCommand', function(e) {
     //console.log("Event:", e);
-    if (e.command != "Delete") catchChange(getAbsPos(undefined), map);
-    else console.log("Delete!:", map);
+    // Per lo store passo il salvataggio della mappa a catchChange così si può posiszionare il cursore nella pos vecchia col revert
+    if (e.command != "Delete") catchChange(getAbsPos(undefined), saveMap);
+    else console.log("Delete!:", saveMap);
   });
 
   editor.on('keydown', function(e) {
-    keyPressed [e.code] = true;
-    map = createMap();
+    keyPressed[e.code] = true;
+    saveMap = createMap();
   });
   editor.on('keyup', function(e) {
     //console.log("Event:", e);
     if (e.code=="Enter" || ((keyPressed.ControlLeft==true || keyPressed.ControlRight==true) && keyPressed.KeyV==true)) {
       console.log("Copy or Enter Event");
       // Con la copia o l'invio ho bisnogno di selezionare il rage dalla posizione del cursore, pima dell'evento, che sta salvato in map.start
-      catchChange(getAbsPos(navigateMap(map.start).node), map);
+      // Per lo store passo il salvataggio della mappa a catchChange così si può posiszionare il cursore nella pos vecchia col revert
+      catchChange(getAbsPos(navigateMap(saveMap.start).node), saveMap);
     }
     else {
-      catchChange(getAbsPos(undefined), map);
+      // Visto che in questo non mi serve camiare la posizione di default passo la stringa vuota
+      catchChange(getAbsPos(undefined), saveMap);
     }
+
     delete keyPressed[e.code];
   });
 
