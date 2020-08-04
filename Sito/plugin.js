@@ -123,10 +123,10 @@ function catchChange(pos, map){
       mech.emptyRevertedMech();   // Se si fanno delle modifiche la coda con gli undo annulati va svuotata
 
       // Righe per fare un log carino
-      var dl = del, ad = add, range = 30;
-      if (del.length > range) dl = del.slice(0,range/2) + "..." + del.slice(del.length -1 -(range/2), del.length -1);
-      if (add.length > range) ad = add.slice(0,range/2) + "..." + add.slice(add.length -1 -(range/2), add.length -1);
-      console.log(`State Changed "%c${dl}%c" into "%c${ad}%c"`,"color: red","","color: red","");
+      var dl = del.length, ad = add.length, range = 30;
+      if (dl > range + 3) dl = del.slice(0,range/2) + "..." + del.slice(dl-1-(range/2), dl-1);
+      if (ad > range + 3) ad = add.slice(0,range/2) + "..." + add.slice(ad-1-(range/2), ad-1);
+      console.log(`State Changed "%c${dl}%c" into "%c${ad}%c at pos %c${start}`,"color: red","","color: red","","font-weight: bold");
     }
 
     oldState = newState;
@@ -170,7 +170,12 @@ function revertChange(type) {
     }
 
     loadState(state);
-    console.log(`Added "%c${add.content}%c" and Removed "%c${rem.content}%c"`,"color: red","","color: red","");
+
+    // Riche per fare un log carino
+    var a = add.content, r = rem.content, range = 30;
+    if (a.length > range + 3) a = a.slice(0,range/2) + "..." + a.slice(a.length -1 -(range/2), a.length -1);
+    if (r.length > range + 3) r = r.slice(0,range/2) + "..." + r.slice(r.length -1 -(range/2), r.length -1);
+    console.log(`Added "%c${a}%c" and Removed "%c${r}%c" at pos %c${add.pos}`,"color: red","","color: red","","font-weight: bold");
 
     setCursorPos(add.map);
   }
