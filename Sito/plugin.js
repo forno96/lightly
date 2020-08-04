@@ -78,7 +78,7 @@ function revertChange(type) {
   if (type == "UNDO" && mech.stack.length == 0) console.log("Undo stack is empty");
   else if (type == "REDO" && mech.revertedstack.length == 0) console.log("Redo stack is empty");
   else {
-    state = catchState();
+    state = oldState; // Prendo oldState perchè se rciatturo di nuovo lo stato potrebbe essere cambiato, che succede se faccio una modifica inutile
     var add, rem;
 
     for (var i = 0; i < 2; i++) {
