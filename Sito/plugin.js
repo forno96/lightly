@@ -31,6 +31,9 @@ function loadState(state) { ed.innerHTML = state; oldState = state; }
 // Rimossa l'opzione del clone
 function range() { return tinyMCE.activeEditor.selection.getRng(); }
 
+// Per il log
+function cutString(str, size) { if (str.length > size + 3){str = str.slice(0,size/2) + "..." + str.slice(str.length-(size/2), str.length);} return str; }
+
 // Funzione di download per capire la dimensione di mech e dello stato
 function download(title) {
   function dw(filename, text) {
@@ -113,11 +116,8 @@ function catchChange(pos, map){
       mech.insItem(mech.createItem("INS", start, add, by, createMap()));
       mech.emptyRevertedMech();   // Se si fanno delle modifiche la coda con gli undo annulati va svuotata
 
-      // Righe per fare un log carino
-      var dl = del, ad = add, range = 30;
-      if (dl.length > range + 3) dl = del.slice(0,range/2) + "..." + del.slice(dl.length-1-(range/2), dl.length);
-      if (ad.length > range + 3) ad = add.slice(0,range/2) + "..." + add.slice(ad.length-1-(range/2), ad.length);
-      console.log(`State Changed "%c${dl}%c" into "%c${ad}%c" at pos %c${start}`,"color: red","","color: red","","font-weight: bold");
+      var range = 30;
+      console.log(`State Changed "%c${cutString(del,range)}%c" into "%c${cutString(add,range)}%c" at pos %c${start}`,"color: red","","color: red","","font-weight: bold");
     }
 
     oldState = newState;
@@ -162,11 +162,8 @@ function revertChange(type) {
 
     loadState(state);
 
-    // Riche per fare un log carino
-    var a = add.content, r = rem.content, range = 30;
-    if (a.length > range + 3) a = a.slice(0,range/2) + "..." + a.slice(a.length -1 -(range/2), a.length);
-    if (r.length > range + 3) r = r.slice(0,range/2) + "..." + r.slice(r.length -1 -(range/2), r.length);
-    console.log(`Added "%c${a}%c" and Removed "%c${r}%c" at pos %c${add.pos}`,"color: red","","color: red","","font-weight: bold");
+    var range = 30;
+    console.log(`Added "%c${cutString(add.content,range)}%c" and Removed "%c${cutString(rem.content,range)}%c" at pos %c${add.pos}`,"color: red","","color: red","","font-weight: bold");
 
     setCursorPos(add.map);
   }
