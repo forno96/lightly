@@ -1,11 +1,5 @@
 class Mechanical {
-  constructor(){
-    this.editMech = 0;
-    this.stackMech = [];
-    this.revertedMech = [];
-  }
-
-  insItem(item){ this.stackMech.push(item); }
+  constructor(){ this.editMech = 0; }
 
   createItem(op, pos, content, by, map){
     var item = {
@@ -18,27 +12,56 @@ class Mechanical {
       map: map // serve dell'undo per mettere il cursore esattamente dove stava
     };
     this.editMech++;
+    
+    return item;
+  }
+}
+
+class Structural {
+  constructor(){
+    this.editStruct = 0;
+    this.stackStruct = [];
+    this.revertedStruct = [];
+  }
+
+  insItem(item){ this.stackStruct.push(item); return this.editStruct-1; }
+
+  createItem(op, by, items){
+    var item = {
+      id: "structural-" + sanitizeID(this.editStruct),
+      op: op,
+      by: by,
+      timestamp: getTime(),
+      items: items
+    };
+    this.editStruct++;
+
+    this.insItem(item);
     return item;
   }
 
-  get stack() { return(this.stackMech); }
-  get revertedstack() {return(this.revertedMech);}
+  get stack() { return(this.stackStruct); }
+  get revertedstack() { return(this.revertedStruct); }
 
-  remItem(i) {
-    var item = this.stackMech.splice(i,1)[0];
-    this.revertedMech[this.revertedMech.length] = item;
+  remItem() {
+    var item = this.stackStruct.splice(this.stackStruct.length-1,1)[0];
+    this.revertedStruct[this.revertedStruct.length] = item;
+    return(item);
+  }
+  remRevert(){
+    var item = this.revertedStruct.splice(this.revertedStruct.length-1,1)[0];
+    this.stackStruct[this.revertedStruct.length] = item;
     return(item);
   }
 
-  remRevert(i){ return(this.revertedMech.splice(i,1)[0]); }
-  emptyRevertedMech() { this.revertedMech = []; }
+  emptyRevertedStruct() { this.revertedStruct = []; }
 }
 
 // INIT CLASS and VAR
 oldState = undefined;
-var by = "";
+var ed, by = "";
 var mech = new Mechanical();
-var ed;
+var struct = new Structural();
 
 // Cerca il cambiamento nella stringa e lo salva
 function catchChange(pos, map){
@@ -60,9 +83,8 @@ function catchChange(pos, map){
       // da inserire il le modifiche di tipo strutturale
       let del = oldState.slice(start,oldEnd+1);
       let add = newState.slice(start,newEnd+1);
-      mech.insItem(mech.createItem("DEL", start, del, by, map));
-      mech.insItem(mech.createItem("INS", start, add, by, createMap()));
-      mech.emptyRevertedMech();   // Se si fanno delle modifiche la coda con gli undo annulati va svuotata
+
+      insItem(add, del, start, map);
 
       var range = 30;
       console.log(`State Changed "%c${cutString(del,range)}%c" into "%c${cutString(add,range)}%c" at pos %c${start}`,"color: red","","color: red","","font-weight: bold");
@@ -72,18 +94,32 @@ function catchChange(pos, map){
   }
 }
 
+function insItem(add,del,pos,map){
+  var items = [];
+  items[items.length] = mech.createItem("DEL", pos, del, by, map);
+  items[items.length] = mech.createItem("INS", pos, add, by, createMap());
+
+  struct.createItem("STD", by, items);
+
+  struct.emptyRevertedStruct(); // Se si fanno delle modifiche la coda con gli undo annulati va svuotata
+}
+
 // Se viende scatenato prende le ultime due modifiche scritte nella pila scelta in base al tipo (UNDO o REUNDO) e le applica
 function revertChange(type) {
   // Se la pila è vuota undoChange non deve fare nulla
-  if (type == "UNDO" && mech.stack.length == 0) console.log("Undo stack is empty");
-  else if (type == "REDO" && mech.revertedstack.length == 0) console.log("Redo stack is empty");
+  if (type == "UNDO" && struct.stack.length == 0) console.log("Undo stack is empty");
+  else if (type == "REDO" && struct.revertedstack.length == 0) console.log("Redo stack is empty");
   else {
     state = oldState; // Prendo oldState perchè se rciatturo di nuovo lo stato potrebbe essere cambiato, che succede se faccio una modifica inutile
     var add, rem;
 
-    for (var i = 0; i < 2; i++) {
+    var items;
+    if (type == "UNDO") items = struct.remItem().items;
+    else if (type = "REDO") items = struct.remRevert().items;
+
+    for (var i = 0; i < items.length; i++) {
+      let item = items[items.length-1-i];
       if (type == "UNDO"){
-        item = mech.remItem(mech.stackMech.length - 1);
         if (item.op == "INS") {
           state = state.slice(0, item.pos) + state.slice(item.pos + item.content.length);
           rem = item;
@@ -94,15 +130,12 @@ function revertChange(type) {
         }
       }
       else if (type == "REDO"){
-        item = mech.remRevert(mech.revertedstack.length - 1);
         if (item.op == "INS") {
           state = state.slice(0, item.pos) + item.content + state.slice(item.pos);
-          mech.insItem(item);
           add = item;
         }
         else if (item.op == "DEL") {
           state = state.slice(0, item.pos) + state.slice(item.pos + item.content.length);
-          mech.insItem(item);
           rem = item;
         }
       }
