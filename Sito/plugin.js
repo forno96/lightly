@@ -16,6 +16,7 @@ class Mechanical {
     return item;
   }
 }
+var mech = new Mechanical();
 
 class Structural {
   constructor(){
@@ -24,7 +25,7 @@ class Structural {
     this.revertedStruct = [];
   }
 
-  insItem(item){ this.stackStruct.push(item); return this.editStruct-1; }
+  insItem(item){ this.stackStruct.push(item); }
 
   createItem(op, by, items){
     var item = {
@@ -40,9 +41,6 @@ class Structural {
     return item;
   }
 
-  get stack() { return(this.stackStruct); }
-  get revertedstack() { return(this.revertedStruct); }
-
   remItem() {
     var item = this.stackStruct.splice(this.stackStruct.length-1,1)[0];
     this.revertedStruct[this.revertedStruct.length] = item;
@@ -56,12 +54,11 @@ class Structural {
 
   emptyRevertedStruct() { this.revertedStruct = []; }
 }
+var struct = new Structural();
 
 // INIT CLASS and VAR
 oldState = undefined;
 var ed, by = "";
-var mech = new Mechanical();
-var struct = new Structural();
 
 // Cerca il cambiamento nella stringa e lo salva
 function catchChange(pos, map){
@@ -109,35 +106,25 @@ function revertChange(type) {
   // Se la pila è vuota undoChange non deve fare nulla
   if (type == "UNDO" && struct.stack.length == 0) console.log("Undo stack is empty");
   else if (type == "REDO" && struct.revertedstack.length == 0) console.log("Redo stack is empty");
-  else {
-    state = oldState; // Prendo oldState perchè se rciatturo di nuovo lo stato potrebbe essere cambiato, che succede se faccio una modifica inutile
-    var add, rem;
+  else if (type == "REDO" || type == "UNDO"){
+    var state = oldState;
 
     var items;
     if (type == "UNDO") items = struct.remItem().items;
-    else if (type = "REDO") items = struct.remRevert().items;
+    else items = struct.remRevert().items;
 
     for (var i = 0; i < items.length; i++) {
-      let item = items[items.length-1-i];
-      if (type == "UNDO"){
-        if (item.op == "INS") {
-          state = state.slice(0, item.pos) + state.slice(item.pos + item.content.length);
-          rem = item;
-        }
-        else if (item.op == "DEL") {
-          state = state.slice(0, item.pos) + item.content + state.slice(item.pos);
-          add = item;
-        }
+      let index = type == "UNDO" ? items.length-1-i : i; // Il verso di lettura dipende se è un undo o un redo
+      let item = items[index];
+      if ((type == "UNDO" && item.op == "INS") || (type == "REDO" &&  item.op == "DEL")){
+        // Caso di rimozione
+        state = state.slice(0, item.pos) + state.slice(item.pos + item.content.length);
+        var rem = item;
       }
-      else if (type == "REDO"){
-        if (item.op == "INS") {
-          state = state.slice(0, item.pos) + item.content + state.slice(item.pos);
-          add = item;
-        }
-        else if (item.op == "DEL") {
-          state = state.slice(0, item.pos) + state.slice(item.pos + item.content.length);
-          rem = item;
-        }
+      else {
+        // Caso di aggiunta
+        state = state.slice(0, item.pos) + item.content + state.slice(item.pos);
+        var add = item;
       }
     }
 
@@ -196,8 +183,6 @@ function setCursorPos(map){
   r = range();
   r.setStart(start.node, sanitize(start.offset, sSize));
   r.setEnd(end.node, sanitize(end.offset, eSize));
-
-  console.log("Cursor set");
 }
 
 // Map serve per ottenere la posizione dei nodi
