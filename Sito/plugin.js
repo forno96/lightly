@@ -12,7 +12,7 @@ class Mechanical {
       map: map // serve dell'undo per mettere il cursore esattamente dove stava
     };
     this.editMech++;
-    
+
     return item;
   }
 }
@@ -41,16 +41,13 @@ class Structural {
     return item;
   }
 
-  remItem() {
-    var item = this.stackStruct.splice(this.stackStruct.length-1,1)[0];
-    this.revertedStruct[this.revertedStruct.length] = item;
-    return(item);
+  mv (from, to){
+    var items = from.splice(from.length-1,1)[0];
+    to[to.length] = items;
+    return items;
   }
-  remRevert(){
-    var item = this.revertedStruct.splice(this.revertedStruct.length-1,1)[0];
-    this.stackStruct[this.revertedStruct.length] = item;
-    return(item);
-  }
+  remItem() { return this.mv(this.stackStruct, this.revertedStruct); }
+  remRevert(){ return this.mv(this.revertedStruct, this.stackStruct); }
 
   emptyRevertedStruct() { this.revertedStruct = []; }
 }
@@ -78,8 +75,8 @@ function catchChange(pos, map){
 
     if (start < newState.length) { // Se c'è stato un cambiamento
       // da inserire il le modifiche di tipo strutturale
-      let del = oldState.slice(start,oldEnd+1);
-      let add = newState.slice(start,newEnd+1);
+      var del = oldState.slice(start,oldEnd+1);
+      var add = newState.slice(start,newEnd+1);
 
       insItem(add, del, start, map);
 
@@ -91,12 +88,39 @@ function catchChange(pos, map){
   }
 }
 
-function insItem(add,del,pos,map){
-  var items = [];
-  items[items.length] = mech.createItem("DEL", pos, del, by, map);
-  items[items.length] = mech.createItem("INS", pos, add, by, createMap());
+function insItem(add, del, pos, oldMap){
+  var items = [], p = pos;
+  var a = add[0]=="<"&&add[add.length-1]==">" ? add.split(/(<[^<]*>)/) : add.split(/([^>]*>|<\/[^<]*)/);
+  var d = del[0]=="<"&&del[del.length-1]==">" ? del.split(/(<[^<]*>)/) : del.split(/([^>]*>|<\/[^<]*)/);
 
-  struct.createItem("STD", by, items);
+  var newMap = createMap();
+
+  if (a[2] == del){
+    items[items.length] = mech.createItem("DEL", pos, "", by, oldMap);
+    items[items.length] = mech.createItem("INS", pos, a[1], by, newMap);
+
+    p += a[1].length + a[2].length;
+    items[items.length] = mech.createItem("DEL", p, "", by, oldMap);
+    items[items.length] = mech.createItem("INS", p, a[3], by, newMap);
+
+    struct.createItem("WRAP", by, items);
+  }
+  else if (d[2] == add){
+    items[items.length] = mech.createItem("DEL", pos, d[1], by, oldMap);
+    items[items.length] = mech.createItem("INS", pos, "", by, newMap);
+
+    p += d[2].length;
+    items[items.length] = mech.createItem("DEL", p, d[3], by, oldMap);
+    items[items.length] = mech.createItem("INS", p, "", by, newMap);
+
+    // Se fai un unwrap tiny spezza i nodi testo in sottonodi, e non li ricollega, devo capire come farlo
+    struct.createItem("UNWRAP", by, items);
+  }
+  else {
+    items[items.length] = mech.createItem("DEL", pos, del, by, oldMap);
+    items[items.length] = mech.createItem("INS", pos, add, by, newMap);
+    struct.createItem("STD", by, items);
+  }
 
   struct.emptyRevertedStruct(); // Se si fanno delle modifiche la coda con gli undo annulati va svuotata
 }
@@ -104,36 +128,40 @@ function insItem(add,del,pos,map){
 // Se viende scatenato prende le ultime due modifiche scritte nella pila scelta in base al tipo (UNDO o REUNDO) e le applica
 function revertChange(type) {
   // Se la pila è vuota undoChange non deve fare nulla
-  if (type == "UNDO" && struct.stack.length == 0) console.log("Undo stack is empty");
-  else if (type == "REDO" && struct.revertedstack.length == 0) console.log("Redo stack is empty");
+  if (type == "UNDO" && struct.stackStruct.length == 0) console.log("Undo stack is empty");
+  else if (type == "REDO" && struct.revertedStruct.length == 0) console.log("Redo stack is empty");
   else if (type == "REDO" || type == "UNDO"){
     var state = oldState;
 
-    var items;
+    var items, mod = [];
     if (type == "UNDO") items = struct.remItem().items;
     else items = struct.remRevert().items;
 
     for (var i = 0; i < items.length; i++) {
       let index = type == "UNDO" ? items.length-1-i : i; // Il verso di lettura dipende se è un undo o un redo
       let item = items[index];
+      pos = parseInt(i/2);
+      if (mod[pos] == undefined) mod[pos] = {};
       if ((type == "UNDO" && item.op == "INS") || (type == "REDO" &&  item.op == "DEL")){
         // Caso di rimozione
         state = state.slice(0, item.pos) + state.slice(item.pos + item.content.length);
-        var rem = item;
+        mod[pos].rem = item;
       }
       else {
         // Caso di aggiunta
         state = state.slice(0, item.pos) + item.content + state.slice(item.pos);
-        var add = item;
+        mod[pos].add = item;
       }
     }
 
     loadState(state);
 
     var range = 30;
-    console.log(`Added "%c${cutString(add.content,range)}%c" and Removed "%c${cutString(rem.content,range)}%c" at pos %c${add.pos}`,"color: red","","color: red","","font-weight: bold");
+    mod.forEach((item, i) => {
+      console.log(`Added "%c${cutString(item.add.content,range)}%c" and Removed "%c${cutString(item.rem.content,range)}%c" at pos %c${item.add.pos}`,"color: red","","color: red","","font-weight: bold");
+    });
 
-    setCursorPos(add.map);
+    setCursorPos(mod[0].add.map);
   }
 }
 
@@ -154,7 +182,7 @@ function getAbsPos(sc) {
   }
 
   let end = 0;
-  var walker = stepNextNode(goToMainNode(endContainer));
+  walker = stepNextNode(goToMainNode(endContainer));
 
   while (walker != null && !Array.from(ed.parentNode.children).includes(walker)){
     if (walker.outerHTML != undefined) end += walker.outerHTML.length;
@@ -165,7 +193,7 @@ function getAbsPos(sc) {
   // Righe per fare un log carino
   var rng = 4;
   var state = catchState(), stateLen = state.length-1, endP =  stateLen - end;
-  console.log(`Range is from pos %c${start}%c "%c${state.slice(sanitize(start-rng, stateLen), start) + "%c[%c" + state[start] + "%c]%c" + state.slice(sanitize(start+1, stateLen), sanitize(start+rng+1,stateLen))}%c" to pos %c${endP}%c "%c${state.slice(sanitize(endP-rng, stateLen), endP) + "%c[%c" + state[endP] + "%c]%c" + state.slice(sanitize(endP+1, stateLen), sanitize(endP+rng+1,stateLen))}%c"`,"font-weight: bold","","color: red","color: grey","color: red","color: grey","color: red","","font-weight: bold","","color: red","color: grey","color: red","color: grey","color: red","")
+  console.log(`Range is from pos %c${start}%c "%c${state.slice(sanitize(start-rng, stateLen), start) + "%c[%c" + state[start] + "%c]%c" + state.slice(sanitize(start+1, stateLen), sanitize(start+rng+1,stateLen))}%c" to pos %c${endP}%c "%c${state.slice(sanitize(endP-rng, stateLen), endP) + "%c[%c" + state[endP] + "%c]%c" + state.slice(sanitize(endP+1, stateLen), sanitize(endP+rng+1,stateLen))}%c"`,"font-weight: bold","","color: red","color: grey","color: red","color: grey","color: red","","font-weight: bold","","color: red","color: grey","color: red","color: grey","color: red","");
 
   return ({ start: start, end: end });
 }
