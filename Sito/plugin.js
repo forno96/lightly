@@ -42,12 +42,12 @@ class Structural {
   }
 
   mv (from, to){
-    var items = from.splice(from.length-1,1)[0];
-    to[to.length] = items;
-    return items;
+    var item = from.splice(from.length-1,1)[0];
+    to[to.length] = item;
+    return item;
   }
   remItem() { return this.mv(this.stackStruct, this.revertedStruct); }
-  remRevert(){ return this.mv(this.revertedStruct, this.stackStruct); }
+  remRevert() { return this.mv(this.revertedStruct, this.stackStruct); }
 
   emptyRevertedStruct() { this.revertedStruct = []; }
 }
@@ -58,12 +58,12 @@ oldState = undefined;
 var ed, by = "";
 
 // Cerca il cambiamento nella stringa e lo salva
-function catchChange(pos, map){
+function catchChange(startNode, map){
   newState = catchState();
-
-  if (oldState == undefined) { oldState = newState; console.log('State Loaded'); }
-  else if (oldState == newState) { console.log('State Unchanged'); }
+  if (oldState == undefined) oldState = newState;
+  else if (oldState == newState) console.log('State Unchanged');
   else {
+    var pos = getAbsPos(startNode);
     // Controllo da sinistra verso destra
     var start = sanitize(pos.start, Math.min(oldState.length, newState.length));
     while ( start < newState.length && newState[start] == oldState[start] ) { start ++; }
@@ -222,25 +222,20 @@ function createMap() {
     return (map);
   }
 
-  var ret = {};
   ed.normalize();
   var r = range();
-  if (r.startContainer == r.endContainer && r.startOffset == r.endOffset){
-    var bracket = genBracket(r.startContainer, r.startOffset);
-    ret = {start: bracket, end: bracket};
-  }
-  else {
-    ret.start = genBracket(r.startContainer, r.startOffset);
-    ret.end = genBracket(r.endContainer, r.endOffset);
-  }
+  var bracket = genBracket(r.startContainer, r.startOffset);
+
+  var ret = { start: bracket };
+  ret.end = (r.startContainer==r.endContainer&&r.startOffset==r.endOffset) ? bracket : genBracket(r.endContainer, r.endOffset);
 
   return ret;
 }
 function navigateMap(map){
   var node = ed;
   while (map.child != null){
-    let of = sanitize(map.offset, node.childNodes.length-1);
-    node = node.childNodes[of];
+    let offset = sanitize(map.offset, node.childNodes.length-1);
+    node = node.childNodes[offset];
     map = map.child;
   }
   return {node: node, offset: map.offset};
@@ -273,7 +268,8 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
 
   editor.on('init', function() {
     ed = tinyMCE.activeEditor.dom.doc.body;
-    catchChange({start : 0, end: 0});
+    catchChange();
+    console.log("Undo Plugin Ready");
   });
 
   var saveMap;
@@ -283,7 +279,7 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
   editor.on('ExecCommand', function(e) {
     //console.log("Event:", e);
     // Per lo store passo il salvataggio della mappa a catchChange così si può posiszionare il cursore nella pos vecchia col revert
-    if (e.command != "Delete") catchChange(getAbsPos(undefined), saveMap);
+    if (e.command != "Delete") catchChange(undefined, saveMap);
     else console.log("Delete!:", saveMap);
   });
 
@@ -297,11 +293,11 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
       console.log("Copy or Enter Event");
       // Con la copia o l'invio ho bisnogno di selezionare il rage dalla posizione del cursore, pima dell'evento, che sta salvato in map.start
       // Per lo store passo il salvataggio della mappa a catchChange così si può posiszionare il cursore nella pos vecchia col revert
-      catchChange(getAbsPos(navigateMap(saveMap.start).node), saveMap);
+      catchChange(navigateMap(saveMap.start).node, saveMap);
     }
     else {
       // Visto che in questo non mi serve camiare la posizione di default passo la stringa vuota
-      catchChange(getAbsPos(undefined), saveMap);
+      catchChange(undefined, saveMap);
     }
 
     delete keyPressed[e.code];
