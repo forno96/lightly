@@ -54,8 +54,8 @@ class Structural {
 }
 var struct = new Structural();
 
-// INIT CLASS and VAR
-oldState = undefined;
+// Dichiaro le variabili globali
+var oldState;
 var ed, by = "";
 
 // Cerca il cambiamento nella stringa e lo salva
@@ -90,7 +90,7 @@ function catchChange(startNode, map){
 // Capisce  il tipo di cambiamento e lo inserisce
 function insItem(add, del, pos, oldMap){
   var items = [];
-  
+
   var a = add[0]=="<"&&add[add.length-1]==">" ? add.split(/(<[^<]*>)/) : add.split(/([^>]*>|<\/[^<]*)/);
   var d = del[0]=="<"&&del[del.length-1]==">" ? del.split(/(<[^<]*>)/) : del.split(/([^>]*>|<\/[^<]*)/);
 
@@ -131,34 +131,31 @@ function revertChange(type) {
   else if (type == "REDO" || type == "UNDO"){
     var state = oldState;
 
-    var items, mod = [];
+    var range = 30; // Per il log
+
+    var items;
     if (type == "UNDO") items = struct.remItem().items;
     else items = struct.remRevert().items;
 
     for (var i = 0; i < items.length; i++) {
-      let index = type == "UNDO" ? items.length-1-i : i; // Il verso di lettura dipende se è un undo o un redo
+      let index = type == "UNDO" ? items.length-1-i : i; // Il verso di lettura dipende se è un undo <- o un redo ->
       let item = items[index];
       if ((type == "UNDO" && item.op == "INS") || (type == "REDO" &&  item.op == "DEL")){
         // Caso di rimozione
         state = state.slice(0, item.pos) + state.slice(item.pos + item.content.length);
-        mod[i] = item;
+        console.log(`Removed "%c${cutString(item.content,range)}%c" at pos %c${item.pos}`,"color: red","","font-weight: bold");
       }
       else {
         // Caso di aggiunta
         state = state.slice(0, item.pos) + item.content + state.slice(item.pos);
-        mod[i] = item;
+        console.log(`Added "%c${cutString(item.content,range)}%c" at pos %c${item.pos}`,"color: red","","font-weight: bold");
       }
     }
 
     loadState(state);
 
-    var range = 30;
-    mod.forEach((item, i) => {
-      if ((type == "UNDO" && item.op == "INS")||(type == "REDO" && item.op == "DEL")) console.log(`Removed "%c${cutString(item.content,range)}%c" at pos %c${item.pos}`,"color: red","","font-weight: bold");
-      else console.log(`Added "%c${cutString(item.content,range)}%c" at pos %c${item.pos}`,"color: red","","font-weight: bold");
-    });
-
-    var rightMap = type == "UNDO" ? mod[0].oldMap : mod[0].newMap;
+    // Se è Undo il primo elemento letto è l'ultimo dell'array altrimenti è il primo
+    var rightMap = type == "UNDO" ? items[items.length-1].oldMap : items[0].newMap;
     setCursorPos(rightMap);
   }
 }
