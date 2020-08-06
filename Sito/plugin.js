@@ -1,7 +1,7 @@
 class Mechanical {
   constructor(){ this.editMech = 0; }
 
-  createItem(op, pos, content, by, map){
+  createItem(op, pos, content, by, newMap, oldMap){
     var item = {
       id: "mech-" + sanitizeID(this.editMech),
       op: op,
@@ -9,7 +9,8 @@ class Mechanical {
       content: content,
       by: by,
       timestamp: getTime(),
-      map: map // serve dell'undo per mettere il cursore esattamente dove stava
+      newMap: newMap, // Serve per l'undo per mettere il cursore esattamente dove stava
+      oldMap: oldMap  // Serve per l'undo per mettere il cursore esattamente dove stava
     };
     this.editMech++;
 
@@ -86,37 +87,37 @@ function catchChange(startNode, map){
   }
 }
 
+// Capisce  il tipo di cambiamento e lo inserisce
 function insItem(add, del, pos, oldMap){
-  var items = [], p = pos;
+  var items = [];
+  
   var a = add[0]=="<"&&add[add.length-1]==">" ? add.split(/(<[^<]*>)/) : add.split(/([^>]*>|<\/[^<]*)/);
   var d = del[0]=="<"&&del[del.length-1]==">" ? del.split(/(<[^<]*>)/) : del.split(/([^>]*>|<\/[^<]*)/);
 
   var newMap = createMap();
 
   if (a[2] == del){
-    items[items.length] = mech.createItem("DEL", pos, "", by, oldMap);
-    items[items.length] = mech.createItem("INS", pos, a[1], by, newMap);
-
-    p += a[1].length + a[2].length;
-    items[items.length] = mech.createItem("DEL", p, "", by, oldMap);
-    items[items.length] = mech.createItem("INS", p, a[3], by, newMap);
-
+    items[items.length] = mech.createItem("INS", pos, a[1], by, newMap, oldMap);
+    items[items.length] = mech.createItem("INS", pos+a[1].length+a[2].length, a[3], by, newMap, oldMap);
     struct.createItem("WRAP", by, items);
   }
   else if (d[2] == add){
-    items[items.length] = mech.createItem("DEL", pos, d[1], by, oldMap);
-    items[items.length] = mech.createItem("INS", pos, "", by, newMap);
-
-    p += d[2].length;
-    items[items.length] = mech.createItem("DEL", p, d[3], by, oldMap);
-    items[items.length] = mech.createItem("INS", p, "", by, newMap);
-
+    items[items.length] = mech.createItem("DEL", pos, d[1], by, newMap, oldMap);
+    items[items.length] = mech.createItem("DEL", pos+d[2].length, d[3], by, newMap, oldMap);
     struct.createItem("UNWRAP", by, items);
   }
+  else if (add == "" && del != "") {
+    items[items.length] = mech.createItem("DEL", pos, del, by, newMap, oldMap);
+    struct.createItem("REM", by, items);
+  }
+  else if (del == "" && add != ""){
+    items[items.length] = mech.createItem("INS", pos, add, by, newMap, oldMap);
+    struct.createItem("ADD", by, items);
+  }
   else {
-    items[items.length] = mech.createItem("DEL", pos, del, by, oldMap);
-    items[items.length] = mech.createItem("INS", pos, add, by, newMap);
-    struct.createItem("STD", by, items);
+    items[items.length] = mech.createItem("DEL", pos, del, by, newMap, oldMap);
+    items[items.length] = mech.createItem("INS", pos, add, by, newMap, oldMap);
+    struct.createItem("SUB", by, items);
   }
 
   struct.emptyRevertedStruct(); // Se si fanno delle modifiche la coda con gli undo annulati va svuotata
@@ -137,17 +138,15 @@ function revertChange(type) {
     for (var i = 0; i < items.length; i++) {
       let index = type == "UNDO" ? items.length-1-i : i; // Il verso di lettura dipende se è un undo o un redo
       let item = items[index];
-      pos = parseInt(i/2);
-      if (mod[pos] == undefined) mod[pos] = {};
       if ((type == "UNDO" && item.op == "INS") || (type == "REDO" &&  item.op == "DEL")){
         // Caso di rimozione
         state = state.slice(0, item.pos) + state.slice(item.pos + item.content.length);
-        mod[pos].rem = item;
+        mod[i] = item;
       }
       else {
         // Caso di aggiunta
         state = state.slice(0, item.pos) + item.content + state.slice(item.pos);
-        mod[pos].add = item;
+        mod[i] = item;
       }
     }
 
@@ -155,10 +154,12 @@ function revertChange(type) {
 
     var range = 30;
     mod.forEach((item, i) => {
-      console.log(`Added "%c${cutString(item.add.content,range)}%c" and Removed "%c${cutString(item.rem.content,range)}%c" at pos %c${item.add.pos}`,"color: red","","color: red","","font-weight: bold");
+      if ((type == "UNDO" && item.op == "INS")||(type == "REDO" && item.op == "DEL")) console.log(`Removed "%c${cutString(item.content,range)}%c" at pos %c${item.pos}`,"color: red","","font-weight: bold");
+      else console.log(`Added "%c${cutString(item.content,range)}%c" at pos %c${item.pos}`,"color: red","","font-weight: bold");
     });
 
-    setCursorPos(mod[0].add.map);
+    var rightMap = type == "UNDO" ? mod[0].oldMap : mod[0].newMap;
+    setCursorPos(rightMap);
   }
 }
 
