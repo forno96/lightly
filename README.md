@@ -4,8 +4,11 @@
 
 ### Stato della tesi: In Sviluppo
 
+	4-6 Agosto: Ho introdotto la classe di modifiche stutturali per catturare il wrap ed unwrap
+	in modo che consumi meno memoria
+	
 	27-31 Luglio: C'è stata una pesante ricostruzione del codice per catturare la porzione da controllare,
-	ora è molto più semplice, intuibile e da molti meno errore, come al solito KISS
+	ora è molto più semplice, intuibile e da molti meno errori, come al solito KISS
 	
 	20-24 Luglio: Aggiunta di un range di ricerca sulla base della posizione del puntatore
 
