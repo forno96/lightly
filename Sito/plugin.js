@@ -74,10 +74,8 @@ function catchChange(pos, map){
     while ( newEnd >= start && oldEnd >= start && newState[newEnd] == oldState[oldEnd]) { newEnd --; oldEnd --;}
 
     if (start < newState.length) { // Se c'è stato un cambiamento
-      // da inserire il le modifiche di tipo strutturale
       var del = oldState.slice(start,oldEnd+1);
       var add = newState.slice(start,newEnd+1);
-
       insItem(add, del, start, map);
 
       var range = 30;
@@ -113,7 +111,6 @@ function insItem(add, del, pos, oldMap){
     items[items.length] = mech.createItem("DEL", p, d[3], by, oldMap);
     items[items.length] = mech.createItem("INS", p, "", by, newMap);
 
-    // Se fai un unwrap tiny spezza i nodi testo in sottonodi, e non li ricollega, devo capire come farlo
     struct.createItem("UNWRAP", by, items);
   }
   else {
@@ -226,9 +223,16 @@ function createMap() {
   }
 
   var ret = {};
+  ed.normalize();
   var r = range();
-  ret.start = genBracket(r.startContainer, r.startOffset);
-  ret.end = genBracket(r.endContainer, r.endOffset);
+  if (r.startContainer == r.endContainer && r.startOffset == r.endOffset){
+    var bracket = genBracket(r.startContainer, r.startOffset);
+    ret = {start: bracket, end: bracket};
+  }
+  else {
+    ret.start = genBracket(r.startContainer, r.startOffset);
+    ret.end = genBracket(r.endContainer, r.endOffset);
+  }
 
   return ret;
 }
