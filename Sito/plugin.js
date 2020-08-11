@@ -251,8 +251,7 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
     tooltip: 'CTRL + Z',
     onAction: function () { revertChange("UNDO"); }
   });
-  editor.shortcuts.add('ctrl+z', "Undo Pc shortcut", function() { revertChange("UNDO"); });
-  editor.shortcuts.add('command+z', "Undo Mac shortcut", function() { revertChange("UNDO"); });
+  editor.shortcuts.add('ctrl+z', "Undo shortcut", function() { revertChange("UNDO"); });
 
 
   editor.ui.registry.addButton('Custom-Redo', {
@@ -261,8 +260,7 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
     tooltip: 'CTRL + SHIFT + Z',
     onAction: function () { revertChange("REDO"); }
   });
-  editor.shortcuts.add('ctrl+y', "Redo Pc shortcut", function() { revertChange("REDO"); });
-  editor.shortcuts.add('command+y', "Redo Mac shortcut", function() { revertChange("REDO"); });
+  editor.shortcuts.add('ctrl+y', "Redo shortcut", function() { revertChange("REDO"); });
 
   editor.on('init', function() {
     ed = tinyMCE.activeEditor.dom.doc.body;
@@ -277,7 +275,9 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
   editor.on('ExecCommand', function(e) {
     //console.log("Event:", e);
     // Per lo store passo il salvataggio della mappa a catchChange così si può posiszionare il cursore nella pos vecchia col revert
-    if (e.command != "Delete") catchChange(undefined, saveMap);
+    if (e.command == "Undo") revertChange("UNDO");
+    else if (e.command == "Redo") revertChange("REDO");
+    else if (e.command != "Delete") catchChange(undefined, saveMap);
     else console.log("Delete!:", saveMap);
   });
 
