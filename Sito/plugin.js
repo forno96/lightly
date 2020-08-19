@@ -184,9 +184,9 @@ function getAbsPos(sc) {
   }
 
   // Righe per fare un log carino
-  var rng = 4;
-  var state = catchState(), stateLen = state.length-1, endP =  stateLen - end;
-  console.log(`Range is from pos %c${start}%c "%c${state.slice(sanitize(start-rng, stateLen), start) + "%c[%c" + state[start] + "%c]%c" + state.slice(sanitize(start+1, stateLen), sanitize(start+rng+1,stateLen))}%c" to pos %c${endP}%c "%c${state.slice(sanitize(endP-rng, stateLen), endP) + "%c[%c" + state[endP] + "%c]%c" + state.slice(sanitize(endP+1, stateLen), sanitize(endP+rng+1,stateLen))}%c"`,"font-weight: bold","","color: red","color: grey","color: red","color: grey","color: red","","font-weight: bold","","color: red","color: grey","color: red","color: grey","color: red","");
+  var rng = 20;
+  var state = catchState(), stateLen = state.length-1, endP =  stateLen - end + 1;
+  console.log(`Range is from pos %c${start}%c to %c${endP}%c\n${state.slice(sanitize(start-rng, stateLen), start)}%c${state.slice(start, endP)}%c${state.slice(endP, sanitize(endP+rng,stateLen))}`,"font-weight: bold","","font-weight: bold","","color: red","");
 
   return ({ start: start, end: end });
 }
