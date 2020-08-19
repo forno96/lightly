@@ -1,7 +1,7 @@
 class Mechanical {
   constructor(){ this.editMech = 0; }
 
-  createItem(op, pos, content, by, map){
+  createItem(op, pos, content, by, newMap, oldMap){
     var item = {
       id: "mech-" + sanitizeID(this.editMech),
       op: op,
@@ -9,7 +9,8 @@ class Mechanical {
       content: content,
       by: by,
       timestamp: getTime(),
-      map: map // serve dell'undo per mettere il cursore esattamente dove stava
+      newMap: newMap, // Serve per l'undo per mettere il cursore esattamente dove stava
+      oldMap: oldMap  // Serve per l'undo per mettere il cursore esattamente dove stava
     };
     this.editMech++;
 
@@ -25,8 +26,6 @@ class Structural {
     this.revertedStruct = [];
   }
 
-  insItem(item){ this.stackStruct.push(item); }
-
   createItem(op, by, items){
     var item = {
       id: "structural-" + sanitizeID(this.editStruct),
@@ -37,7 +36,7 @@ class Structural {
     };
     this.editStruct++;
 
-    this.insItem(item);
+    this.stackStruct.push(item);
     return item;
   }
 
@@ -53,8 +52,8 @@ class Structural {
 }
 var struct = new Structural();
 
-// INIT CLASS and VAR
-oldState = undefined;
+// Dichiaro le variabili globali
+var oldState;
 var ed, by = "";
 
 // Cerca il cambiamento nella stringa e lo salva
@@ -66,7 +65,7 @@ function catchChange(startNode, map){
     var pos = getAbsPos(startNode);
     // Controllo da sinistra verso destra
     var start = sanitize(pos.start, Math.min(oldState.length, newState.length));
-    while ( start < newState.length && newState[start] == oldState[start] ) { start ++; }
+    while ( start < newState.length && start < oldState.length && newState[start] == oldState[start] ) { start ++; }
 
     // Controllo da destra verso sinistra
     var newEnd = newState.length -1 - pos.end; // Se c'è stato quache cambiamento allora è probabile che la lunghezza tra le 2 stringhe è cambiata
@@ -86,37 +85,37 @@ function catchChange(startNode, map){
   }
 }
 
+// Capisce  il tipo di cambiamento e lo inserisce
 function insItem(add, del, pos, oldMap){
-  var items = [], p = pos;
-  var a = add[0]=="<"&&add[add.length-1]==">" ? add.split(/(<[^<]*>)/) : add.split(/([^>]*>|<\/[^<]*)/);
-  var d = del[0]=="<"&&del[del.length-1]==">" ? del.split(/(<[^<]*>)/) : del.split(/([^>]*>|<\/[^<]*)/);
+  var items = [];
+
+  var a = (add[0]=="<" && add[add.length-1]==">") ? add.split(/(<[^<]*>)/) : add.split(/([^>]*>|<\/[^<]*)/);
+  var d = (del[0]=="<" && del[del.length-1]==">") ? del.split(/(<[^<]*>)/) : del.split(/([^>]*>|<\/[^<]*)/);
 
   var newMap = createMap();
 
-  if (a[2] == del){
-    items[items.length] = mech.createItem("DEL", pos, "", by, oldMap);
-    items[items.length] = mech.createItem("INS", pos, a[1], by, newMap);
-
-    p += a[1].length + a[2].length;
-    items[items.length] = mech.createItem("DEL", p, "", by, oldMap);
-    items[items.length] = mech.createItem("INS", p, a[3], by, newMap);
-
+  if (a[2] == del && del != ""){
+    items[items.length] = mech.createItem("INS", pos, a[1], by, newMap, oldMap);
+    items[items.length] = mech.createItem("INS", pos+a[1].length+a[2].length, a[3], by, newMap, oldMap);
     struct.createItem("WRAP", by, items);
   }
-  else if (d[2] == add){
-    items[items.length] = mech.createItem("DEL", pos, d[1], by, oldMap);
-    items[items.length] = mech.createItem("INS", pos, "", by, newMap);
-
-    p += d[2].length;
-    items[items.length] = mech.createItem("DEL", p, d[3], by, oldMap);
-    items[items.length] = mech.createItem("INS", p, "", by, newMap);
-
+  else if (d[2] == add && add != ""){
+    items[items.length] = mech.createItem("DEL", pos, d[1], by, newMap, oldMap);
+    items[items.length] = mech.createItem("DEL", pos+d[2].length, d[3], by, newMap, oldMap);
     struct.createItem("UNWRAP", by, items);
   }
+  else if (add == "" && del != "") {
+    items[items.length] = mech.createItem("DEL", pos, del, by, newMap, oldMap);
+    struct.createItem("REM", by, items);
+  }
+  else if (del == "" && add != ""){
+    items[items.length] = mech.createItem("INS", pos, add, by, newMap, oldMap);
+    struct.createItem("ADD", by, items);
+  }
   else {
-    items[items.length] = mech.createItem("DEL", pos, del, by, oldMap);
-    items[items.length] = mech.createItem("INS", pos, add, by, newMap);
-    struct.createItem("STD", by, items);
+    items[items.length] = mech.createItem("DEL", pos, del, by, newMap, oldMap);
+    items[items.length] = mech.createItem("INS", pos, add, by, newMap, oldMap);
+    struct.createItem("SUB", by, items);
   }
 
   struct.emptyRevertedStruct(); // Se si fanno delle modifiche la coda con gli undo annulati va svuotata
@@ -130,35 +129,32 @@ function revertChange(type) {
   else if (type == "REDO" || type == "UNDO"){
     var state = oldState;
 
-    var items, mod = [];
+    var range = 30; // Per il log
+
+    var items;
     if (type == "UNDO") items = struct.remItem().items;
     else items = struct.remRevert().items;
 
     for (var i = 0; i < items.length; i++) {
-      let index = type == "UNDO" ? items.length-1-i : i; // Il verso di lettura dipende se è un undo o un redo
+      let index = type == "UNDO" ? items.length-1-i : i; // Il verso di lettura dipende se è un undo <- o un redo ->
       let item = items[index];
-      pos = parseInt(i/2);
-      if (mod[pos] == undefined) mod[pos] = {};
       if ((type == "UNDO" && item.op == "INS") || (type == "REDO" &&  item.op == "DEL")){
         // Caso di rimozione
         state = state.slice(0, item.pos) + state.slice(item.pos + item.content.length);
-        mod[pos].rem = item;
+        console.log(`Removed "%c${cutString(item.content,range)}%c" at pos %c${item.pos}`,"color: red","","font-weight: bold");
       }
       else {
         // Caso di aggiunta
         state = state.slice(0, item.pos) + item.content + state.slice(item.pos);
-        mod[pos].add = item;
+        console.log(`Added "%c${cutString(item.content,range)}%c" at pos %c${item.pos}`,"color: red","","font-weight: bold");
       }
     }
 
     loadState(state);
 
-    var range = 30;
-    mod.forEach((item, i) => {
-      console.log(`Added "%c${cutString(item.add.content,range)}%c" and Removed "%c${cutString(item.rem.content,range)}%c" at pos %c${item.add.pos}`,"color: red","","color: red","","font-weight: bold");
-    });
-
-    setCursorPos(mod[0].add.map);
+    // Se è Undo il primo elemento letto è l'ultimo dell'array altrimenti è il primo
+    var rightMap = type == "UNDO" ? items[items.length-1].oldMap : items[0].newMap;
+    setCursorPos(rightMap);
   }
 }
 
@@ -166,7 +162,7 @@ function revertChange(type) {
 function getAbsPos(sc) {
   var r = range();
 
-  var startContainer = sc==undefined? r.startContainer : sc;
+  var startContainer = sc;
   var endContainer = r.endContainer;
 
   // Calcolo start
@@ -188,9 +184,9 @@ function getAbsPos(sc) {
   }
 
   // Righe per fare un log carino
-  var rng = 4;
-  var state = catchState(), stateLen = state.length-1, endP =  stateLen - end;
-  console.log(`Range is from pos %c${start}%c "%c${state.slice(sanitize(start-rng, stateLen), start) + "%c[%c" + state[start] + "%c]%c" + state.slice(sanitize(start+1, stateLen), sanitize(start+rng+1,stateLen))}%c" to pos %c${endP}%c "%c${state.slice(sanitize(endP-rng, stateLen), endP) + "%c[%c" + state[endP] + "%c]%c" + state.slice(sanitize(endP+1, stateLen), sanitize(endP+rng+1,stateLen))}%c"`,"font-weight: bold","","color: red","color: grey","color: red","color: grey","color: red","","font-weight: bold","","color: red","color: grey","color: red","color: grey","color: red","");
+  var rng = 20;
+  var state = catchState(), stateLen = state.length-1, endP =  stateLen - end + 1;
+  console.log(`Range is from pos %c${start}%c to %c${endP}%c\n${state.slice(sanitize(start-rng, stateLen), start)}%c${state.slice(start, endP)}%c${state.slice(endP, sanitize(endP+rng,stateLen))}`,"font-weight: bold","","font-weight: bold","","color: red","");
 
   return ({ start: start, end: end });
 }
@@ -253,8 +249,7 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
     tooltip: 'CTRL + Z',
     onAction: function () { revertChange("UNDO"); }
   });
-  editor.shortcuts.add('ctrl+z', "Undo Pc shortcut", function() { revertChange("UNDO"); });
-  editor.shortcuts.add('command+z', "Undo Mac shortcut", function() { revertChange("UNDO"); });
+  editor.shortcuts.add('ctrl+z', "Undo shortcut", function() { revertChange("UNDO"); });
 
 
   editor.ui.registry.addButton('Custom-Redo', {
@@ -263,8 +258,37 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
     tooltip: 'CTRL + SHIFT + Z',
     onAction: function () { revertChange("REDO"); }
   });
-  editor.shortcuts.add('ctrl+y', "Redo Pc shortcut", function() { revertChange("REDO"); });
-  editor.shortcuts.add('command+y', "Redo Mac shortcut", function() { revertChange("REDO"); });
+  editor.shortcuts.add('ctrl+y', "Redo shortcut", function() { revertChange("REDO"); });
+
+  editor.ui.registry.addButton('Download-State', {
+    text: 'Download',
+    icon: 'save',
+    onAction: function () {
+      editor.windowManager.open({
+        title: 'Download State',
+        body: {
+          type: 'panel',
+          items: [{ type: 'input', name: 'title', label: 'Title'}]
+        },
+        buttons: [
+          { type: 'cancel', text: 'Close' },
+          { type: 'submit', text: 'Download', primary: true }
+        ],
+        onSubmit: function (api) {
+          var data = api.getData();
+          download(data.title);
+          api.close();
+        }
+      });
+    }
+  });
+
+  editor.ui.registry.addButton('Upload-State', {
+    text: 'Upload',
+    icon: 'upload',
+    type: 'file',
+    onAction: function () { upload(); }
+  });
 
   editor.on('init', function() {
     ed = tinyMCE.activeEditor.dom.doc.body;
@@ -272,35 +296,30 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
     console.log("Undo Plugin Ready");
   });
 
-  var saveMap;
-  var keyPressed = {};
+  var saveMap = {used: true};
+  function save(){
+    if (saveMap.used == true) saveMap = {used: false, map: createMap()};
+  }
 
-  editor.on('BeforeExecCommand', function (){ saveMap = createMap(); });
+  editor.on('BeforeExecCommand', function (){ save(); });
   editor.on('ExecCommand', function(e) {
     //console.log("Event:", e);
     // Per lo store passo il salvataggio della mappa a catchChange così si può posiszionare il cursore nella pos vecchia col revert
-    if (e.command != "Delete") catchChange(undefined, saveMap);
-    else console.log("Delete!:", saveMap);
+    if (e.command == "Undo") revertChange("UNDO");
+    else if (e.command == "Redo") revertChange("REDO");
+    else {
+      catchChange(navigateMap(saveMap.map.start).node, saveMap.map);
+      saveMap.used = true;
+    }
   });
 
   editor.on('keydown', function(e) {
-    keyPressed[e.code] = true;
-    saveMap = createMap();
+    save();
   });
   editor.on('keyup', function(e) {
     //console.log("Event:", e);
-    if (e.code=="Enter" || ((keyPressed.ControlLeft==true || keyPressed.ControlRight==true) && keyPressed.KeyV==true)) {
-      console.log("Copy or Enter Event");
-      // Con la copia o l'invio ho bisnogno di selezionare il rage dalla posizione del cursore, pima dell'evento, che sta salvato in map.start
-      // Per lo store passo il salvataggio della mappa a catchChange così si può posiszionare il cursore nella pos vecchia col revert
-      catchChange(navigateMap(saveMap.start).node, saveMap);
-    }
-    else {
-      // Visto che in questo non mi serve camiare la posizione di default passo la stringa vuota
-      catchChange(undefined, saveMap);
-    }
-
-    delete keyPressed[e.code];
+    catchChange(navigateMap(saveMap.map.start).node, saveMap.map);
+    saveMap.used = true;
   });
 
   return { getMetadata: function () { return  { name: "Undo stack plugin" }; }};
@@ -353,6 +372,32 @@ function download(title) {
     element.click();
     document.body.removeChild(element);
   }
-  dw(`state_${title}.txt`, catchState());
-  dw(`mech_${title}.txt`, JSON.stringify(mech));
+  var state = catchState();
+  dw(`UndoPlugin-${title}-state.txt`, state);
+  dw(`UndoPlugin-${title}-mech.txt`, JSON.stringify(mech));
+  dw(`UndoPlugin-${title}-all.txt`, JSON.stringify({state: state, struct: {edit: struct.editStruct, stack: struct.stackStruct, rev: struct.revertedStruct}}));
+  console.log("File Downloaded");
+}
+
+function upload(){
+  var element = document.createElement('input');
+  element.setAttribute('type', 'file');
+  element.setAttribute('id', 'fileElem');
+  element.style.display = 'none';
+  document.body.appendChild(element);
+  element.click();
+  element.addEventListener("change", function () {
+    var file = document.getElementById("fileElem").files;
+    var fr = new FileReader();
+    fr.onload = function(event) {
+      var obj = JSON.parse(event.target.result);
+      loadState(obj.state);
+      struct.editStruct = obj.struct.edit;
+      struct.stackStruct = obj.struct.stack;
+      struct.revertedStruct = obj.struct.rev;
+      document.body.removeChild(element);
+    };
+    fr.readAsText(file[0]);
+  }, false);
+  console.log("File Uploaded");
 }
