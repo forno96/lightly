@@ -264,6 +264,36 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
   editor.shortcuts.add('ctrl+y', "Redo Pc shortcut", function() { revertChange("REDO"); });
   editor.shortcuts.add('command+y', "Redo Mac shortcut", function() { revertChange("REDO"); });
 
+  editor.ui.registry.addButton('Download-State', {
+    text: 'Download',
+    icon: 'save',
+    onAction: function () {
+      editor.windowManager.open({
+        title: 'Download State',
+        body: {
+          type: 'panel',
+          items: [{ type: 'input', name: 'title', label: 'Title'}]
+        },
+        buttons: [
+          { type: 'cancel', text: 'Close' },
+          { type: 'submit', text: 'Download', primary: true }
+        ],
+        onSubmit: function (api) {
+          var data = api.getData();
+          download(data.title);
+          api.close();
+        }
+      });
+    }
+  });
+
+  editor.ui.registry.addButton('Upload-State', {
+    text: 'Upload',
+    icon: 'upload',
+    type: 'file',
+    onAction: function () { upload(); }
+  });
+
   editor.on('init', function() {
     ed = tinyMCE.activeEditor.dom.doc.body;
     catchChange();
@@ -351,6 +381,32 @@ function download(title) {
     element.click();
     document.body.removeChild(element);
   }
-  dw(`state_${title}.txt`, catchState());
-  dw(`mech_${title}.txt`, JSON.stringify(mech));
+  var state = catchState();
+  dw(`UndoPlugin-${title}-state.txt`, state);
+  dw(`UndoPlugin-${title}-mech.txt`, JSON.stringify(mech));
+  dw(`UndoPlugin-${title}-all.txt`, JSON.stringify({state: state, struct: {edit: struct.editStruct, stack: struct.stackStruct, rev: struct.revertedStruct}}));
+  console.log("File Downloaded");
+}
+
+function upload(){
+  var element = document.createElement('input');
+  element.setAttribute('type', 'file');
+  element.setAttribute('id', 'fileElem');
+  element.style.display = 'none';
+  document.body.appendChild(element);
+  element.click();
+  element.addEventListener("change", function () {
+    var file = document.getElementById("fileElem").files;
+    var fr = new FileReader();
+    fr.onload = function(event) {
+      var obj = JSON.parse(event.target.result);
+      loadState(obj.state);
+      struct.editStruct = obj.struct.edit;
+      struct.stackStruct = obj.struct.stack;
+      struct.revertedStruct = obj.struct.rev;
+      document.body.removeChild(element);
+    };
+    fr.readAsText(file[0]);
+  }, false);
+  console.log("File Uploaded");
 }
