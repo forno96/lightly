@@ -26,8 +26,6 @@ class Structural {
     this.revertedStruct = [];
   }
 
-  insItem(item){ this.stackStruct.push(item); }
-
   createItem(op, by, items){
     var item = {
       id: "structural-" + sanitizeID(this.editStruct),
@@ -38,7 +36,7 @@ class Structural {
     };
     this.editStruct++;
 
-    this.insItem(item);
+    this.stackStruct.push(item);
     return item;
   }
 
@@ -67,7 +65,7 @@ function catchChange(startNode, map){
     var pos = getAbsPos(startNode);
     // Controllo da sinistra verso destra
     var start = sanitize(pos.start, Math.min(oldState.length, newState.length));
-    while ( start < newState.length && newState[start] == oldState[start] ) { start ++; }
+    while ( start < newState.length && start < oldState.length && newState[start] == oldState[start] ) { start ++; }
 
     // Controllo da destra verso sinistra
     var newEnd = newState.length -1 - pos.end; // Se c'è stato quache cambiamento allora è probabile che la lunghezza tra le 2 stringhe è cambiata
@@ -91,17 +89,17 @@ function catchChange(startNode, map){
 function insItem(add, del, pos, oldMap){
   var items = [];
 
-  var a = add[0]=="<"&&add[add.length-1]==">" ? add.split(/(<[^<]*>)/) : add.split(/([^>]*>|<\/[^<]*)/);
-  var d = del[0]=="<"&&del[del.length-1]==">" ? del.split(/(<[^<]*>)/) : del.split(/([^>]*>|<\/[^<]*)/);
+  var a = (add[0]=="<" && add[add.length-1]==">") ? add.split(/(<[^<]*>)/) : add.split(/([^>]*>|<\/[^<]*)/);
+  var d = (del[0]=="<" && del[del.length-1]==">") ? del.split(/(<[^<]*>)/) : del.split(/([^>]*>|<\/[^<]*)/);
 
   var newMap = createMap();
 
-  if (a[2] == del){
+  if (a[2] == del && del != ""){
     items[items.length] = mech.createItem("INS", pos, a[1], by, newMap, oldMap);
     items[items.length] = mech.createItem("INS", pos+a[1].length+a[2].length, a[3], by, newMap, oldMap);
     struct.createItem("WRAP", by, items);
   }
-  else if (d[2] == add){
+  else if (d[2] == add && add != ""){
     items[items.length] = mech.createItem("DEL", pos, d[1], by, newMap, oldMap);
     items[items.length] = mech.createItem("DEL", pos+d[2].length, d[3], by, newMap, oldMap);
     struct.createItem("UNWRAP", by, items);
@@ -164,7 +162,7 @@ function revertChange(type) {
 function getAbsPos(sc) {
   var r = range();
 
-  var startContainer = sc==undefined? r.startContainer : sc;
+  var startContainer = sc;
   var endContainer = r.endContainer;
 
   // Calcolo start
@@ -300,35 +298,26 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
     console.log("Undo Plugin Ready");
   });
 
-  var saveMap;
-  var keyPressed = {};
+  var saveMap = {used: true};
+  function save(){
+    if (saveMap.used == true) saveMap = {used: false, map: createMap()};
+  }
 
-  editor.on('BeforeExecCommand', function (){ saveMap = createMap(); });
+  editor.on('BeforeExecCommand', function (){ save(); });
   editor.on('ExecCommand', function(e) {
     //console.log("Event:", e);
     // Per lo store passo il salvataggio della mappa a catchChange così si può posiszionare il cursore nella pos vecchia col revert
-    if (e.command != "Delete") catchChange(undefined, saveMap);
-    else console.log("Delete!:", saveMap);
+    catchChange(navigateMap(saveMap.map.start).node, saveMap.map);
+    saveMap.used = true;
   });
 
   editor.on('keydown', function(e) {
-    keyPressed[e.code] = true;
-    saveMap = createMap();
+    save();
   });
   editor.on('keyup', function(e) {
     //console.log("Event:", e);
-    if (e.code=="Enter" || ((keyPressed.ControlLeft==true || keyPressed.ControlRight==true) && keyPressed.KeyV==true)) {
-      console.log("Copy or Enter Event");
-      // Con la copia o l'invio ho bisnogno di selezionare il rage dalla posizione del cursore, pima dell'evento, che sta salvato in map.start
-      // Per lo store passo il salvataggio della mappa a catchChange così si può posiszionare il cursore nella pos vecchia col revert
-      catchChange(navigateMap(saveMap.start).node, saveMap);
-    }
-    else {
-      // Visto che in questo non mi serve camiare la posizione di default passo la stringa vuota
-      catchChange(undefined, saveMap);
-    }
-
-    delete keyPressed[e.code];
+    catchChange(navigateMap(saveMap.map.start).node, saveMap.map);
+    saveMap.used = true;
   });
 
   return { getMetadata: function () { return  { name: "Undo stack plugin" }; }};
