@@ -260,9 +260,41 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
   });
   editor.shortcuts.add('ctrl+y', "Redo shortcut", function() { revertChange("REDO"); });
 
+
+  editor.on('init', function() {
+    ed = tinyMCE.activeEditor.dom.doc.body;
+    catchChange();
+    console.log("Undo Plugin Ready");
+  });
+
+  // Catturo la posizione del cursore prima dell modifica per controllare le modifiche da quel punto
+  var saveMap = {used: true};
+  function save(){ if (saveMap.used == true) saveMap = {used: false, map: createMap()}; }
+  editor.on('BeforeExecCommand', function (){ save(); });
+  editor.on('keydown', function(e) { save(); });
+
+  // Dopo che è avvenuto il cambiamento mando la ricerca per catturarlo e salvarlo
+  editor.on('ExecCommand', function(e) {
+    //console.log("Event:", e);
+    // Per lo store passo il salvataggio della mappa a catchChange così si può posiszionare il cursore nella pos vecchia col revert
+    if (e.command == "Undo") revertChange("UNDO");
+    else if (e.command == "Redo") revertChange("REDO");
+    else {
+      catchChange(navigateMap(saveMap.map.start).node, saveMap.map);
+      saveMap.used = true;
+    }
+  });
+  editor.on('keyup', function(e) {
+    //console.log("Event:", e);
+    catchChange(navigateMap(saveMap.map.start).node, saveMap.map);
+    saveMap.used = true;
+  });
+
+
+  // Funzione di download/upload per capire la dimensione di mech e dello stato
   editor.ui.registry.addButton('Download-State', {
     text: 'Download',
-    icon: 'save',
+    icon: 'action-next',
     onAction: function () {
       editor.windowManager.open({
         title: 'Download State',
@@ -276,50 +308,50 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
         ],
         onSubmit: function (api) {
           var data = api.getData();
-          download(data.title);
+          function dw(filename, text) {
+            var element = document.createElement('a');
+            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+            element.setAttribute('download', filename);
+            element.style.display = 'none';
+            document.body.appendChild(element);
+            element.click();
+            document.body.removeChild(element);
+          }
+          var state = catchState();
+          dw(`UndoPlugin-${title}-state.txt`, state);
+          dw(`UndoPlugin-${title}-mech.txt`, JSON.stringify(mech));
+          dw(`UndoPlugin-${title}-all.txt`, JSON.stringify({state: state, struct: {edit: struct.editStruct, stack: struct.stackStruct, rev: struct.revertedStruct}}));
+          console.log("File Downloaded");
           api.close();
         }
       });
     }
   });
-
   editor.ui.registry.addButton('Upload-State', {
     text: 'Upload',
-    icon: 'upload',
-    type: 'file',
-    onAction: function () { upload(); }
-  });
-
-  editor.on('init', function() {
-    ed = tinyMCE.activeEditor.dom.doc.body;
-    catchChange();
-    console.log("Undo Plugin Ready");
-  });
-
-  var saveMap = {used: true};
-  function save(){
-    if (saveMap.used == true) saveMap = {used: false, map: createMap()};
-  }
-
-  editor.on('BeforeExecCommand', function (){ save(); });
-  editor.on('ExecCommand', function(e) {
-    //console.log("Event:", e);
-    // Per lo store passo il salvataggio della mappa a catchChange così si può posiszionare il cursore nella pos vecchia col revert
-    if (e.command == "Undo") revertChange("UNDO");
-    else if (e.command == "Redo") revertChange("REDO");
-    else {
-      catchChange(navigateMap(saveMap.map.start).node, saveMap.map);
-      saveMap.used = true;
+    icon: 'action-prev',
+    onAction: function () {
+      var element = document.createElement('input');
+      element.setAttribute('type', 'file');
+      element.setAttribute('id', 'fileElem');
+      element.style.display = 'none';
+      document.body.appendChild(element);
+      element.click();
+      element.addEventListener("change", function () {
+        var file = document.getElementById("fileElem").files;
+        var fr = new FileReader();
+        fr.onload = function(event) {
+          var obj = JSON.parse(event.target.result);
+          loadState(obj.state);
+          struct.editStruct = obj.struct.edit;
+          struct.stackStruct = obj.struct.stack;
+          struct.revertedStruct = obj.struct.rev;
+          console.log("File Uploaded");
+          document.body.removeChild(element);
+        };
+        fr.readAsText(file[0]);
+      }, false);
     }
-  });
-
-  editor.on('keydown', function(e) {
-    save();
-  });
-  editor.on('keyup', function(e) {
-    //console.log("Event:", e);
-    catchChange(navigateMap(saveMap.map.start).node, saveMap.map);
-    saveMap.used = true;
   });
 
   return { getMetadata: function () { return  { name: "Undo stack plugin" }; }};
@@ -360,44 +392,3 @@ function range() { return tinyMCE.activeEditor.selection.getRng(); }
 
 // Per il log
 function cutString(str, size) { if (str.length > size + 3){str = str.slice(0,size/2) + "..." + str.slice(str.length-(size/2), str.length);} return str; }
-
-// Funzione di download per capire la dimensione di mech e dello stato
-function download(title) {
-  function dw(filename, text) {
-    var element = document.createElement('a');
-    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
-    element.setAttribute('download', filename);
-    element.style.display = 'none';
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
-  }
-  var state = catchState();
-  dw(`UndoPlugin-${title}-state.txt`, state);
-  dw(`UndoPlugin-${title}-mech.txt`, JSON.stringify(mech));
-  dw(`UndoPlugin-${title}-all.txt`, JSON.stringify({state: state, struct: {edit: struct.editStruct, stack: struct.stackStruct, rev: struct.revertedStruct}}));
-  console.log("File Downloaded");
-}
-
-function upload(){
-  var element = document.createElement('input');
-  element.setAttribute('type', 'file');
-  element.setAttribute('id', 'fileElem');
-  element.style.display = 'none';
-  document.body.appendChild(element);
-  element.click();
-  element.addEventListener("change", function () {
-    var file = document.getElementById("fileElem").files;
-    var fr = new FileReader();
-    fr.onload = function(event) {
-      var obj = JSON.parse(event.target.result);
-      loadState(obj.state);
-      struct.editStruct = obj.struct.edit;
-      struct.stackStruct = obj.struct.stack;
-      struct.revertedStruct = obj.struct.rev;
-      document.body.removeChild(element);
-    };
-    fr.readAsText(file[0]);
-  }, false);
-  console.log("File Uploaded");
-}
