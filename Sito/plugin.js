@@ -83,40 +83,60 @@ function catchChange(startNode, map){
 
     oldState = newState;
   }
+  console.log("");
 }
 
 // Capisce  il tipo di cambiamento e lo inserisce
 function insItem(add, del, pos, oldMap){
   var items = [];
 
-  var a = (add[0]=="<" && add[add.length-1]==">") ? add.split(/(<[^<]*>)/) : add.split(/([^>]*>|<\/[^<]*)/);
-  var d = (del[0]=="<" && del[del.length-1]==">") ? del.split(/(<[^<]*>)/) : del.split(/([^>]*>|<\/[^<]*)/);
+  var a = add.split(/(<[^<>]*>|[^<>]*>|<[^<>]*)/);
+  var d = del.split(/(<[^<>]*>|[^<>]*>|<[^<>]*)/);
 
   var newMap = createMap();
 
-  if (a[2] == del && del != ""){
+  if (del != "" && add == "") {
+    items[items.length] = mech.createItem("DEL", pos, del, by, newMap, oldMap);
+    struct.createItem("DELETE", by, items);
+  }
+  else if (add != "" && del == "") {
+    items[items.length] = mech.createItem("INS", pos, add, by, newMap, oldMap);
+    struct.createItem("INSERT", by, items);
+  }
+  else if (a.slice(2,a.length-2).join("") == del) {
     items[items.length] = mech.createItem("INS", pos, a[1], by, newMap, oldMap);
-    items[items.length] = mech.createItem("INS", pos+a[1].length+a[2].length, a[3], by, newMap, oldMap);
+    items[items.length] = mech.createItem("INS", pos+a.slice(0,a.length-2).join("").length, a[a.length-2], by, newMap, oldMap);
     struct.createItem("WRAP", by, items);
   }
-  else if (d[2] == add && add != ""){
+  else if (a.slice(2,a.length-2).join("") == "<"+del+">") {
+    items[items.length] = mech.createItem("INS", pos-1, "<"+a[1], by, newMap, oldMap);
+    items[items.length] = mech.createItem("INS", pos+a.slice(0,a.length-2).join("").length, a[a.length-2]+">", by, newMap, oldMap);
+    struct.createItem("WRAP", by, items);
+  }
+  else if (d.slice(2,d.length-2).join("") == add) {
     items[items.length] = mech.createItem("DEL", pos, d[1], by, newMap, oldMap);
-    items[items.length] = mech.createItem("DEL", pos+d[2].length, d[3], by, newMap, oldMap);
+    items[items.length] = mech.createItem("DEL", pos+d.slice(2,d.length-2).join("").length, d[d.length-2], by, newMap, oldMap);
     struct.createItem("UNWRAP", by, items);
   }
-  else if (add == "" && del != "") {
-    items[items.length] = mech.createItem("DEL", pos, del, by, newMap, oldMap);
-    struct.createItem("REM", by, items);
+  else if (d.slice(2,d.length-2).join("") == "<"+add+">") { // Da finire
+    items[items.length] = mech.createItem("DEL", pos-1, "<"+d[1], by, newMap, oldMap);
+    items[items.length] = mech.createItem("DEL", pos+d.slice(2,d.length-2).join("").length-1, d[d.length-2]+">", by, newMap, oldMap);
+    struct.createItem("UNWRAP", by, items);
   }
-  else if (del == "" && add != ""){
-    items[items.length] = mech.createItem("INS", pos, add, by, newMap, oldMap);
-    struct.createItem("ADD", by, items);
+  else if (a.length>5 && d.length>5 &&  a.slice(2,a.length-2).join("") == d.slice(2,d.length-2).join("")) {
+    items[items.length] = mech.createItem("DEL", pos, d[1], by, newMap, oldMap);
+    items[items.length] = mech.createItem("DEL", pos+d.slice(2,d.length-2).join("").length, d[d.length-2], by, newMap, oldMap);
+    items[items.length] = mech.createItem("INS", pos, a[1], by, newMap, oldMap);
+    items[items.length] = mech.createItem("INS", pos+a.slice(0,a.length-2).join("").length, a[a.length-2], by, newMap, oldMap);
+    struct.createItem("REPLACE", by, items);
   }
   else {
     items[items.length] = mech.createItem("DEL", pos, del, by, newMap, oldMap);
     items[items.length] = mech.createItem("INS", pos, add, by, newMap, oldMap);
-    struct.createItem("SUB", by, items);
+    struct.createItem("CHANGE", by, items);
   }
+
+  console.log("ADD:",a,"\nDEL:",d,`\nChange type: ${struct.stackStruct[struct.stackStruct.length-1].op}`);
 
   struct.emptyRevertedStruct(); // Se si fanno delle modifiche la coda con gli undo annulati va svuotata
 }
