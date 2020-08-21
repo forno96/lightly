@@ -155,6 +155,8 @@ function revertChange(type) {
     // Se è Undo il primo elemento letto è l'ultimo dell'array altrimenti è il primo
     var rightMap = type == "UNDO" ? items[items.length-1].oldMap : items[0].newMap;
     setCursorPos(rightMap);
+
+    console.log("");
   }
 }
 
@@ -210,11 +212,15 @@ function setCursorPos(map){
 function createMap() {
   function genBracket(node, offset){
     var map = {child: null, offset: offset};
-    do {
-      let index = Array.from(node.parentNode.childNodes).findIndex((elem) => elem == node);
-      map = {child: map, offset: index};
-      node = node.parentNode;
-    } while (node != ed);
+    if (node != ed) {
+      do {
+        let index = Array.from(node.parentNode.childNodes).findIndex((elem) => elem == node);
+        map = {child: map, offset: index};
+        node = node.parentNode;
+      } while (node != ed);
+    }
+    else map = {child: map, offset: 0};
+
     return (map);
   }
 
@@ -229,10 +235,14 @@ function createMap() {
 }
 function navigateMap(map){
   var node = ed;
-  while (map.child != null){
+  var flag = true;
+  while (map.child != null && flag){
     let offset = sanitize(map.offset, node.childNodes.length-1);
-    node = node.childNodes[offset];
-    map = map.child;
+    if (node.childNodes[offset] == undefined) flag = false;
+    else {
+      node = node.childNodes[offset];
+      map = map.child;
+    }
   }
   return {node: node, offset: map.offset};
 }
@@ -268,26 +278,30 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
   });
 
   // Catturo la posizione del cursore prima dell modifica per controllare le modifiche da quel punto
-  var saveMap = {used: true};
-  function save(){ if (saveMap.used == true) saveMap = {used: false, map: createMap()}; }
+  var oldestMap = {used: true}, saveMap = {};
+  function save(){
+    saveMap = createMap();
+    if (oldestMap.used == true) oldestMap = {used: false, map: saveMap};
+  }
+  function lunchCatchChange(){
+    // Passo il salvataggio della mappa a catchChange così si può posiszionare il cursore nella pos vecchia col revert
+    catchChange(navigateMap(oldestMap.map.start).node, saveMap);
+    oldestMap.used = true;
+  }
+
   editor.on('BeforeExecCommand', function (){ save(); });
   editor.on('keydown', function(e) { save(); });
 
   // Dopo che è avvenuto il cambiamento mando la ricerca per catturarlo e salvarlo
   editor.on('ExecCommand', function(e) {
     //console.log("Event:", e);
-    // Per lo store passo il salvataggio della mappa a catchChange così si può posiszionare il cursore nella pos vecchia col revert
     if (e.command == "Undo") revertChange("UNDO");
     else if (e.command == "Redo") revertChange("REDO");
-    else {
-      catchChange(navigateMap(saveMap.map.start).node, saveMap.map);
-      saveMap.used = true;
-    }
+    else lunchCatchChange();
   });
   editor.on('keyup', function(e) {
     //console.log("Event:", e);
-    catchChange(navigateMap(saveMap.map.start).node, saveMap.map);
-    saveMap.used = true;
+    lunchCatchChange();
   });
 
 
@@ -378,7 +392,7 @@ function stepBackNode(node) {
 function stepNextNode(node) {
   if (ed == node) return node;
   else if (node.nextSibling != undefined) node = node.nextSibling;
-  else node = stepBackNode(node.parentNode);
+  else node = stepNextNode(node.parentNode);
   return node;
 }
 
