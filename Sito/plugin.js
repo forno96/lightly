@@ -58,11 +58,11 @@ var by = "";
 
 // Cerca il cambiamento nella stringa e lo salva
 function catchChange(startNode, map){
-  console.log("");
   newState = catchState();
   if (oldState == undefined) oldState = newState;
-  else if (oldState == newState) console.log('State Unchanged');
+  else if (oldState == newState) { console.log(""); console.log('State Unchanged'); }
   else {
+    console.log("");
     var pos = getAbsPos(startNode);
     // Controllo da sinistra verso destra
     var start = sanitize(pos.start, Math.min(oldState.length, newState.length));
