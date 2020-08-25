@@ -53,15 +53,16 @@ class Structural {
 var struct = new Structural();
 
 // Dichiaro le variabili globali
-var oldState;
-var ed, by = "";
+var oldState, ed;
+var by = "";
 
 // Cerca il cambiamento nella stringa e lo salva
 function catchChange(startNode, map){
   newState = catchState();
   if (oldState == undefined) oldState = newState;
-  else if (oldState == newState) console.log('State Unchanged');
+  else if (oldState == newState) { console.log(""); console.log('State Unchanged'); }
   else {
+    console.log("");
     var pos = getAbsPos(startNode);
     // Controllo da sinistra verso destra
     var start = sanitize(pos.start, Math.min(oldState.length, newState.length));
@@ -83,7 +84,6 @@ function catchChange(startNode, map){
 
     oldState = newState;
   }
-  console.log("");
 }
 
 // Capisce  il tipo di cambiamento e lo inserisce
@@ -144,6 +144,7 @@ function insItem(add, del, pos, oldMap){
 // Se viende scatenato prende le ultime due modifiche scritte nella pila scelta in base al tipo (UNDO o REUNDO) e le applica
 function revertChange(type) {
   // Se la pila è vuota undoChange non deve fare nulla
+  console.log("");
   if (type == "UNDO" && struct.stackStruct.length == 0) console.log("Undo stack is empty");
   else if (type == "REDO" && struct.revertedStruct.length == 0) console.log("Redo stack is empty");
   else if (type == "REDO" || type == "UNDO"){
@@ -175,8 +176,6 @@ function revertChange(type) {
     // Se è Undo il primo elemento letto è l'ultimo dell'array altrimenti è il primo
     var rightMap = type == "UNDO" ? items[items.length-1].oldMap : items[0].newMap;
     setCursorPos(rightMap);
-
-    console.log("");
   }
 }
 
@@ -197,7 +196,7 @@ function getAbsPos(sc) {
   }
 
   let end = 0;
-  walker = stepNextNode(goToMainNode(endContainer));
+  walker = stepNextNode(stepNextNode(goToMainNode(endContainer)));
 
   while (walker != null && !Array.from(ed.parentNode.children).includes(walker)){
     if (walker.outerHTML != undefined) end += walker.outerHTML.length;
@@ -268,10 +267,8 @@ function navigateMap(map){
 }
 
 tinymce.PluginManager.add('UndoStack', function(editor, url) {
-  editor.on('BeforeAddUndo', function(e) {
-    // Disabilita l'undo built in
-    return false;
-  });
+  // Disabilita l'undo built in
+  editor.on('BeforeAddUndo', function(e) { return false; });
 
   editor.ui.registry.addButton('Custom-Undo', {
     text: 'Undo',
@@ -281,7 +278,6 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
   });
   editor.shortcuts.add('ctrl+z', "Undo shortcut", function() { revertChange("UNDO"); });
 
-
   editor.ui.registry.addButton('Custom-Redo', {
     text: 'Redo',
     icon: 'redo',
@@ -290,7 +286,6 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
   });
   editor.shortcuts.add('ctrl+y', "Redo shortcut", function() { revertChange("REDO"); });
 
-
   editor.on('init', function() {
     ed = tinyMCE.activeEditor.dom.doc.body;
     catchChange();
@@ -298,15 +293,14 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
   });
 
   // Catturo la posizione del cursore prima dell modifica per controllare le modifiche da quel punto
-  var oldestMap = {used: true}, saveMap = {};
+  var saveMap = {used: true};
   function save(){
-    saveMap = createMap();
-    if (oldestMap.used == true) oldestMap = {used: false, map: saveMap};
+    if (saveMap.used == true) saveMap = {used: false, map: createMap()};
   }
   function lunchCatchChange(){
     // Passo il salvataggio della mappa a catchChange così si può posiszionare il cursore nella pos vecchia col revert
-    catchChange(navigateMap(oldestMap.map.start).node, saveMap);
-    oldestMap.used = true;
+    catchChange(navigateMap(saveMap.map.start).node, saveMap.map);
+    saveMap.used = true;
   }
 
   editor.on('BeforeExecCommand', function (){ save(); });
@@ -324,68 +318,17 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
     lunchCatchChange();
   });
 
-
+  // Da eliminare più avanti
   // Funzione di download/upload per capire la dimensione di mech e dello stato
   editor.ui.registry.addButton('Download-State', {
     text: 'Download',
     icon: 'action-next',
-    onAction: function () {
-      editor.windowManager.open({
-        title: 'Download State',
-        body: {
-          type: 'panel',
-          items: [{ type: 'input', name: 'title', label: 'Title'}]
-        },
-        buttons: [
-          { type: 'cancel', text: 'Close' },
-          { type: 'submit', text: 'Download', primary: true }
-        ],
-        onSubmit: function (api) {
-          var data = api.getData();
-          function dw(filename, text) {
-            var element = document.createElement('a');
-            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
-            element.setAttribute('download', filename);
-            element.style.display = 'none';
-            document.body.appendChild(element);
-            element.click();
-            document.body.removeChild(element);
-          }
-          var state = catchState();
-          dw(`UndoPlugin-${title}-state.txt`, state);
-          dw(`UndoPlugin-${title}-mech.txt`, JSON.stringify(mech));
-          dw(`UndoPlugin-${title}-all.txt`, JSON.stringify({state: state, struct: {edit: struct.editStruct, stack: struct.stackStruct, rev: struct.revertedStruct}}));
-          console.log("File Downloaded");
-          api.close();
-        }
-      });
-    }
+    onAction: function () {download(editor);}
   });
   editor.ui.registry.addButton('Upload-State', {
     text: 'Upload',
     icon: 'action-prev',
-    onAction: function () {
-      var element = document.createElement('input');
-      element.setAttribute('type', 'file');
-      element.setAttribute('id', 'fileElem');
-      element.style.display = 'none';
-      document.body.appendChild(element);
-      element.click();
-      element.addEventListener("change", function () {
-        var file = document.getElementById("fileElem").files;
-        var fr = new FileReader();
-        fr.onload = function(event) {
-          var obj = JSON.parse(event.target.result);
-          loadState(obj.state);
-          struct.editStruct = obj.struct.edit;
-          struct.stackStruct = obj.struct.stack;
-          struct.revertedStruct = obj.struct.rev;
-          console.log("File Uploaded");
-          document.body.removeChild(element);
-        };
-        fr.readAsText(file[0]);
-      }, false);
-    }
+    onAction: function () {upload(editor);}
   });
 
   return { getMetadata: function () { return  { name: "Undo stack plugin" }; }};
@@ -426,3 +369,59 @@ function range() { return tinyMCE.activeEditor.selection.getRng(); }
 
 // Per il log
 function cutString(str, size) { if (str.length > size + 3){str = str.slice(0,size/2) + "..." + str.slice(str.length-(size/2), str.length);} return str; }
+
+// Da eliminare in deploy
+function download(editor) {
+  editor.windowManager.open({
+    title: 'Download State',
+    body: {
+      type: 'panel',
+      items: [{ type: 'input', name: 'title', label: 'Title'}]
+    },
+    buttons: [
+      { type: 'cancel', text: 'Close' },
+      { type: 'submit', text: 'Download', primary: true }
+    ],
+    onSubmit: function (api) {
+      var data = api.getData();
+      var title = data.title;
+      function dw(filename, text) {
+        var element = document.createElement('a');
+        element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+        element.setAttribute('download', filename);
+        element.style.display = 'none';
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
+      }
+      var state = catchState();
+      dw(`UndoPlugin-${title}-state.txt`, state);
+      dw(`UndoPlugin-${title}-mech.txt`, JSON.stringify(mech));
+      dw(`UndoPlugin-${title}-all.txt`, JSON.stringify({state: state, struct: {edit: struct.editStruct, stack: struct.stackStruct, rev: struct.revertedStruct}}));
+      console.log("File Downloaded");
+      api.close();
+    }
+  });
+}
+function upload(editor) {
+  var element = document.createElement('input');
+  element.setAttribute('type', 'file');
+  element.setAttribute('id', 'fileElem');
+  element.style.display = 'none';
+  document.body.appendChild(element);
+  element.click();
+  element.addEventListener("change", function () {
+    var file = document.getElementById("fileElem").files;
+    var fr = new FileReader();
+    fr.onload = function(event) {
+      var obj = JSON.parse(event.target.result);
+      loadState(obj.state);
+      struct.editStruct = obj.struct.edit;
+      struct.stackStruct = obj.struct.stack;
+      struct.revertedStruct = obj.struct.rev;
+      console.log("File Uploaded");
+      document.body.removeChild(element);
+    };
+    fr.readAsText(file[0]);
+  }, false);
+}
