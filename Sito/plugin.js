@@ -196,7 +196,7 @@ function getAbsPos(sc) {
   }
 
   let end = 0;
-  walker = stepNextNode(goToMainNode(endContainer));
+  walker = stepNextNode(stepNextNode(goToMainNode(endContainer)));
 
   while (walker != null && !Array.from(ed.parentNode.children).includes(walker)){
     if (walker.outerHTML != undefined) end += walker.outerHTML.length;
