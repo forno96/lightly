@@ -1,0 +1,33 @@
+body {
+    font-family: 'Roboto';font-size: 22px;
+}
+
+p{
+  font-size: large;
+}
+
+.tit{
+  padding-left: 1.3em;
+}
+.tit:before {
+  content: "\f135"; /* FontAwesome Unicode */
+  font-family: FontAwesome;
+  display: inline-block;
+  margin-left: -1.3em; /* same as padding-left set on li */
+  width: 1.3em; /* same as padding-left set on li */
+}
+
+.int{
+  padding-left: 2.6em;
+}
+.int:before {
+  content: "\f7e4"; /* FontAwesome Unicode */
+  font-family: FontAwesome;
+  display: inline-block;
+  margin-left: -1.3em; /* same as padding-left set on li */
+  width: 1.3em; /* same as padding-left set on li */
+}
+
+.cont{
+  padding-left: 2.6em;
+}
