@@ -40,13 +40,8 @@ class Structural {
     return item;
   }
 
-  mv (from, to){
-    var item = from.splice(from.length-1,1)[0];
-    to[to.length] = item;
-    return item;
-  }
-  remItem() { return this.mv(this.stackStruct, this.revertedStruct); }
-  remRevert() { return this.mv(this.revertedStruct, this.stackStruct); }
+  remItem() { return pop_move(this.stackStruct, this.revertedStruct); }
+  remRevert() { return pop_move(this.revertedStruct, this.stackStruct); }
 
   emptyRevertedStruct() { this.revertedStruct = []; }
 }
@@ -273,18 +268,15 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
   editor.ui.registry.addButton('Custom-Undo', {
     text: 'Undo',
     icon: 'undo',
-    tooltip: 'CTRL + Z',
+    tooltip: 'Ctrl + Z',
     onAction: function () { revertChange("UNDO"); }
   });
-  editor.shortcuts.add('ctrl+z', "Undo shortcut", function() { revertChange("UNDO"); });
-
   editor.ui.registry.addButton('Custom-Redo', {
     text: 'Redo',
     icon: 'redo',
-    tooltip: 'CTRL + SHIFT + Z',
+    tooltip: 'Ctrl + Y',
     onAction: function () { revertChange("REDO"); }
   });
-  editor.shortcuts.add('ctrl+y', "Redo shortcut", function() { revertChange("REDO"); });
 
   editor.on('init', function() {
     ed = tinyMCE.activeEditor.dom.doc.body;
@@ -369,6 +361,14 @@ function range() { return tinyMCE.activeEditor.selection.getRng(); }
 
 // Per il log
 function cutString(str, size) { if (str.length > size + 3){str = str.slice(0,size/2) + "..." + str.slice(str.length-(size/2), str.length);} return str; }
+
+// Muovo pendo il primo elemento dell'array from e lo metto in fondo a to
+// Serve per lo scambio di elemento dei 2 array dentro struct
+function pop_move(from, to){
+  var item = from.splice(from.length-1,1)[0];
+  to[to.length] = item;
+  return item;
+}
 
 // Da eliminare in deploy
 function download(editor) {
