@@ -28,7 +28,7 @@ class Structural {
 
   createItem(op, by, items){
     var item = {
-      id: "structural-" + sanitizeID(this.editStruct),
+      id: this.editStruct,
       op: op,
       by: by,
       timestamp: getTime(),

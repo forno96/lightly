@@ -6,8 +6,10 @@
   <script src="https://kit.fontawesome.com/f4ab78ad43.js" crossorigin="anonymous"></script>
   <link href='https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet'>
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
-  <script src="./index.js" onload="launchView()"></script>
   <link rel="stylesheet" href="./index.css">
+
+  <script src="./index.js" onload="launchView()"></script>
+
   <link rel="shortcut icon" href="./favicon.ico" type="image/x-icon">
   <link rel="icon" href="./favicon.ico" type="image/x-icon">
 
@@ -26,20 +28,20 @@
   </script>
 </head>
 <body class="bg-light">
-  <h1 class="text-center text-primary font-weight-light pt-2"><i class="fas fa-rocket fa-flip-horizontal"></i> lightly <i class="fas fa-rocket"></i></h1>
+  <h1 class="text-center text-primary font-weight-light pt-3"><i class="fas fa-rocket fa-flip-horizontal"></i> lightly <i class="fas fa-rocket"></i></h1>
   <div class="container-fluid">
     <div class="row">
       <div class="col-4">
         <h3 class="text-center">Pila delle modifiche</h3>
         <div class="bg-white border border-primary rounded mt-2" style="height:100%; max-height: 800px;">
-          <div class="row">
-            <div class="col">
+          <div class="row pt-2">
+            <div class="col-6">
               <p class="text-center">Modifiche</p>
-              <div id="viewStruct"></div>
+              <div class="scroll text-truncate" id="viewStruct"></div>
             </div>
-            <div class="col">
+            <div class="col-6">
               <p class="text-center">Annulate</p>
-              <div id="viewRev"></div>
+              <div class="scroll text-truncate" id="viewRev"></div>
             </div>
           </div>
         </div>
