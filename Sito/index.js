@@ -4,11 +4,21 @@ function sanit(str){
   return str[0].toUpperCase() + str.slice(1).toLowerCase()
 }
 
+function createEl(tag, cl, id, text){
+  var el = document.createElement(tag);
+  if (cl != "") el.className = cl;
+  if (cl != "") el.innerText = text;
+  return el;
+}
+
+
 async function launchView(){
+  await delay(1000);
   while (true) {
     try {
-      viewStruct("viewStruct", struct.stackStruct);
-      viewStruct("viewRev", struct.revertedStruct);
+      stat = {edit: struct.editStruct, lenStk: struct.stackStruct.length, lenRev: struct.revertedStruct.lenght};
+      viewStruct("viewStruct", struct.stackStruct, stat);
+      viewStruct("viewRev", struct.revertedStruct, stat);
     }
     catch (e){
       console.log(e);
@@ -18,33 +28,39 @@ async function launchView(){
   }
 }
 
-function createEl(tag, cl, id, text){
-  var el = document.createElement(tag);
-  el.className = cl;
-  el.innerText = text;
-  return el;
-}
+var save = {
+  edit: 0,
+  lenStk: 0,
+  lenRev: 0
+};
 
-function viewStruct(id, struct){
-  $("#"+id).html("");
+function viewStruct(id, struct, stat){
+  if (save != stat) {
+    save = stat;
 
-  struct.forEach((st, i) => {
-    let el = createEl("p", "tit text-primary","","");
-    el.appendChild (createEl("span","text-dark","",`${st.id}: ${sanit(st.op)}`))
-    st.items.forEach((mec, i) => {
-      let content = mec.content;
-      if (content == "&nbsp;" || content == " ") content = "SPACE";
+    var newView = createEl("div","","","");
+    struct.forEach((st, i) => {
+      let el = createEl("p", "tit text-primary","","");
+      el.appendChild (createEl("span","text-dark","",`${st.id}: ${sanit(st.op)}`))
+      st.items.forEach((mec, i) => {
+        let content = mec.content;
+        if (content == "&nbsp;" || content == " ") content = "SPACE";
 
-      nextEl = createEl("p", "int "+(mec.op=="INS"?"text-success":"text-danger"),"","");
-      cn = createEl("span","text-dark text-truncate","",content);
-      cn.setAttribute("data-toggle","tooltip");
-      cn.setAttribute("data-placement","right");
-      cn.setAttribute("title", content);
-      nextEl.appendChild(cn);
+        nextEl = createEl("p", "int "+(mec.op=="INS"?"text-success":"text-danger"),"","");
+        cn = createEl("span","text-dark text-truncate","",content);
+        cn.setAttribute("data-toggle","tooltip");
+        cn.setAttribute("data-placement","right");
+        cn.setAttribute("title", content);
+        nextEl.appendChild(cn);
 
-      el.append(nextEl);
+        el.append(nextEl);
+      });
+
+      newView.prepend(el);
     });
 
-    $("#"+id).prepend(el);
-  });
+    st = document.getElementById(id);
+    if (st.children[0] != undefined) st.children[0].remove();
+    st.append(newView);
+  }
 }
