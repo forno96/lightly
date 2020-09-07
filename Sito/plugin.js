@@ -50,14 +50,15 @@ var struct = new Structural();
 // Dichiaro le variabili globali
 var oldState, ed;
 var by = "";
+var log = true;
 
 // Cerca il cambiamento nella stringa e lo salva
 function catchChange(startNode, map){
   newState = catchState();
   if (oldState == undefined) oldState = newState;
-  else if (oldState == newState) { console.log(""); console.log('State Unchanged'); }
+  else if (oldState == newState && log) { console.log(""); console.log('State Unchanged'); }
   else {
-    console.log("");
+    if (log) console.log("");
     var pos = getAbsPos(startNode);
     // Controllo da sinistra verso destra
     var start = sanitize(pos.start, Math.min(oldState.length, newState.length));
@@ -73,8 +74,10 @@ function catchChange(startNode, map){
       var add = newState.slice(start,newEnd+1);
       insItem(add, del, start, map);
 
-      var range = 30;
-      console.log(`State Changed "%c${cutString(del,range)}%c" into "%c${cutString(add,range)}%c" at pos %c${start}`,"color: red","","color: red","","font-weight: bold");
+      if (log) {
+        var range = 30;
+        console.log(`State Changed "%c${cutString(del,range)}%c" into "%c${cutString(add,range)}%c" at pos %c${start}`,"color: red","","color: red","","font-weight: bold");
+      }
     }
 
     oldState = newState;
@@ -131,7 +134,7 @@ function insItem(add, del, pos, oldMap){
     struct.createItem("CHANGE", by, items);
   }
 
-  console.log("ADD:",a,"\nDEL:",d,`\nChange type: ${struct.stackStruct[struct.stackStruct.length-1].op}`);
+  if (log) console.log("ADD:",a,"\nDEL:",d,`\nChange type: ${struct.stackStruct[struct.stackStruct.length-1].op}`);
 
   struct.emptyRevertedStruct(); // Se si fanno delle modifiche la coda con gli undo annulati va svuotata
 }
@@ -139,9 +142,9 @@ function insItem(add, del, pos, oldMap){
 // Se viende scatenato prende le ultime due modifiche scritte nella pila scelta in base al tipo (UNDO o REUNDO) e le applica
 function revertChange(type) {
   // Se la pila è vuota undoChange non deve fare nulla
-  console.log("");
-  if (type == "UNDO" && struct.stackStruct.length == 0) console.log("Undo stack is empty");
-  else if (type == "REDO" && struct.revertedStruct.length == 0) console.log("Redo stack is empty");
+  if (log) console.log("");
+  if (type == "UNDO" && struct.stackStruct.length == 0 && log) console.log("Undo stack is empty");
+  else if (type == "REDO" && struct.revertedStruct.length == 0 && log) console.log("Redo stack is empty");
   else if (type == "REDO" || type == "UNDO"){
     var state = oldState;
 
@@ -157,12 +160,12 @@ function revertChange(type) {
       if ((type == "UNDO" && item.op == "INS") || (type == "REDO" &&  item.op == "DEL")){
         // Caso di rimozione
         state = state.slice(0, item.pos) + state.slice(item.pos + item.content.length);
-        console.log(`Removed "%c${cutString(item.content,range)}%c" at pos %c${item.pos}`,"color: red","","font-weight: bold");
+        if (log) console.log(`Removed "%c${cutString(item.content,range)}%c" at pos %c${item.pos}`,"color: red","","font-weight: bold");
       }
       else {
         // Caso di aggiunta
         state = state.slice(0, item.pos) + item.content + state.slice(item.pos);
-        console.log(`Added "%c${cutString(item.content,range)}%c" at pos %c${item.pos}`,"color: red","","font-weight: bold");
+        if (log) console.log(`Added "%c${cutString(item.content,range)}%c" at pos %c${item.pos}`,"color: red","","font-weight: bold");
       }
     }
 
@@ -199,10 +202,11 @@ function getAbsPos(sc) {
     walker = stepNextNode(walker);
   }
 
-  // Righe per fare un log carino
-  var rng = 20;
-  var state = catchState(), stateLen = state.length-1, endP =  stateLen - end + 1;
-  console.log(`Range is from pos %c${start}%c to %c${endP}%c\n${state.slice(sanitize(start-rng, stateLen), start)}%c${state.slice(start, endP)}%c${state.slice(endP, sanitize(endP+rng,stateLen))}`,"font-weight: bold","","font-weight: bold","","color: red","");
+  if (log) {
+    var rng = 20;
+    var state = catchState(), stateLen = state.length-1, endP =  stateLen - end + 1;
+    console.log(`Range is from pos %c${start}%c to %c${endP}%c\n${state.slice(sanitize(start-rng, stateLen), start)}%c${state.slice(start, endP)}%c${state.slice(endP, sanitize(endP+rng,stateLen))}`,"font-weight: bold","","font-weight: bold","","color: red","");
+  }
 
   return ({ start: start, end: end });
 }
@@ -281,7 +285,7 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
   editor.on('init', function() {
     ed = tinyMCE.activeEditor.dom.doc.body;
     catchChange();
-    console.log("Undo Plugin Ready");
+    if (log) console.log("Undo Plugin Ready");
   });
 
   // Catturo la posizione del cursore prima dell modifica per controllare le modifiche da quel punto
@@ -398,7 +402,7 @@ function download(editor) {
       dw(`UndoPlugin-${title}-state.txt`, state);
       dw(`UndoPlugin-${title}-mech.txt`, JSON.stringify(mech));
       dw(`UndoPlugin-${title}-all.txt`, JSON.stringify({state: state, struct: {edit: struct.editStruct, stack: struct.stackStruct, rev: struct.revertedStruct}}));
-      console.log("File Downloaded");
+      if (log) console.log("File Downloaded");
       api.close();
     }
   });
@@ -419,7 +423,7 @@ function upload(editor) {
       struct.editStruct = obj.struct.edit;
       struct.stackStruct = obj.struct.stack;
       struct.revertedStruct = obj.struct.rev;
-      console.log("File Uploaded");
+      if (log) console.log("File Uploaded");
       document.body.removeChild(element);
     };
     fr.readAsText(file[0]);
