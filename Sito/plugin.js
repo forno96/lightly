@@ -50,7 +50,7 @@ var struct = new Structural();
 // Dichiaro le variabili globali
 var oldState, ed;
 var by = "";
-var log = true;
+var log = false;
 
 // Cerca il cambiamento nella stringa e lo salva
 function catchChange(startNode, map){
@@ -143,8 +143,8 @@ function insItem(add, del, pos, oldMap){
 function revertChange(type) {
   // Se la pila è vuota undoChange non deve fare nulla
   if (log) console.log("");
-  if (type == "UNDO" && struct.stackStruct.length == 0 && log) console.log("Undo stack is empty");
-  else if (type == "REDO" && struct.revertedStruct.length == 0 && log) console.log("Redo stack is empty");
+  if (type == "UNDO" && struct.stackStruct.length == 0) { if (log) console.log("Undo stack is empty"); }
+  else if (type == "REDO" && struct.revertedStruct.length == 0) { if (log) console.log("Redo stack is empty"); }
   else if (type == "REDO" || type == "UNDO"){
     var state = oldState;
 
