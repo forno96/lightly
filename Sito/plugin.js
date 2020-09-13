@@ -3,7 +3,7 @@ class Mechanical {
 
   createItem(op, pos, content, by, newMap, oldMap){
     var item = {
-      id: "mech-" + sanitizeID(this.editMech),
+      id: this.editMech,
       op: op,
       pos: pos,
       content: content,
@@ -42,16 +42,19 @@ class Structural {
   remItem() { return pop_move(this.stackStruct, this.revertedStruct); }
   remRevert() { return pop_move(this.revertedStruct, this.stackStruct); }
 
+  lastItem() { return this.stackStruct[this.stackStruct.length-1]; }
+
   emptyRevertedStruct() { this.revertedStruct = []; }
 }
 
 // Dichiaro le variabili globali
-var oldState, ed, by, log, struct, mech;
+var oldState, ed, by, log, interval, struct, mech;
 // Funzione di inizializzazione
 function initLightly(param){
-  ed  = param.ed  != undefined ? param.ed : tinyMCE.activeEditor.dom.doc.body;
-  by  = param.by  != undefined ? param.by : "";
+  ed = param.ed != undefined ? param.ed : tinyMCE.activeEditor.dom.doc.body;
+  by = param.by != undefined ? param.by : "";
   log = param.log != undefined ? param.log : true;
+  interval = param.interval != undefined ? param.interval : 3;
 
   mech = new Mechanical();
   struct = new Structural();
@@ -108,12 +111,29 @@ function insItem(add, del, pos, oldMap){
   var newMap = createMap();
 
   if (del != "" && add == "") {
-    items[items.length] = mech.createItem("DEL", pos, del, by, newMap, oldMap);
-    struct.createItem("DELETE", by, items);
+    var tmp = struct.lastItem();
+    if (tmp != undefined && tmp.op == "DELETE" && tmp.items[0].pos-del.length == pos && compareTime(tmp.items[0].timestamp, getTime(), interval)) {
+      tmp = tmp.items[0];
+      tmp.pos = pos;
+      tmp.content = del + tmp.content;
+      tmp.timestamp = getTime();
+    }
+    else {
+      items[items.length] = mech.createItem("DEL", pos, del, by, newMap, oldMap);
+      struct.createItem("DELETE", by, items);
+    }
   }
   else if (add != "" && del == "") {
-    items[items.length] = mech.createItem("INS", pos, add, by, newMap, oldMap);
-    struct.createItem("INSERT", by, items);
+    var tmp = struct.lastItem();
+    if (tmp != undefined && tmp.op == "INSERT" && tmp.items[0].pos+tmp.items[0].content.length == pos && compareTime(tmp.items[0].timestamp, getTime(), interval)) {
+      tmp = tmp.items[0];
+      tmp.content = tmp.content + add;
+      tmp.timestamp = getTime();
+    }
+    else {
+      items[items.length] = mech.createItem("INS", pos, add, by, newMap, oldMap);
+      struct.createItem("INSERT", by, items);
+    }
   }
   else if (a.slice(2,a.length-2).join("") == del) {
     items[items.length] = mech.createItem("INS", pos, a[1], by, newMap, oldMap);
@@ -304,6 +324,7 @@ tinymce.PluginManager.add('lightly', function(editor, url) {
     initLightly({
       by: "Francesco Fornari",
       ed: tinyMCE.activeEditor.dom.doc.body,
+      interval: 3,
       log: true
     });
     if (log) console.log("lightly ready");
@@ -351,10 +372,15 @@ tinymce.PluginManager.add('lightly', function(editor, url) {
   return { getMetadata: function () { return  { name: "lightly" }; }};
 });
 
-// Per organizzare mech
-function sanitizeID(value){ return "0".repeat( sanitize(5-value.toString().length, 5) ) + value; }
-function getTime(){ return (new Date().toJSON()); }
+// Funzioni di supporto
 
+//function sanitizeID(value){ return "0".repeat( sanitize(5-value.toString().length, 5) ) + value; }
+function getTime(){ return (new Date().toJSON()); }
+function compareTime(oldTime, newTime, interval) {
+  var tmp = new Date(oldTime);
+  tmp.setSeconds(tmp.getSeconds() + interval);
+  return tmp.toJSON() >= newTime;
+}
 // Mette num tra 0 e max
 function sanitize(num, max){ if(num<0){num = 0;} else if(num>max){num = max;} return num; }
 
