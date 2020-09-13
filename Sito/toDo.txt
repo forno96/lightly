@@ -4,10 +4,9 @@ FIX/PATCH:
     con funzione ad och per sanificazione di tiny
   - Metti in modo contiguo le modifiche unite entro 3 sec (parametro globale) con intervallo contiguo
   - https://jestjs.io/ per i test?
-  - funzione di inizializzazione parametri globali
 
   FATTO:
-  -
+  - Funzione di inizializzazione parametri globali
 
 BUG:
   DA RISOLVERE:
@@ -15,4 +14,4 @@ BUG:
   - Se faccio molti invio in mezzo a dei <br> non prende la modifica
 
   RISOLTI:
-  - 
+  -

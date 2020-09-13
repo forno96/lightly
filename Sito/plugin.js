@@ -17,7 +17,6 @@ class Mechanical {
     return item;
   }
 }
-var mech = new Mechanical();
 
 class Structural {
   constructor(){
@@ -45,12 +44,20 @@ class Structural {
 
   emptyRevertedStruct() { this.revertedStruct = []; }
 }
-var struct = new Structural();
 
 // Dichiaro le variabili globali
-var oldState, ed;
-var by = "";
-var log = false;
+var oldState, ed, by, log, struct, mech;
+// Funzione di inizializzazione
+function initLightly(param){
+  ed  = param.ed  != undefined ? param.ed : tinyMCE.activeEditor.dom.doc.body;
+  by  = param.by  != undefined ? param.by : "";
+  log = param.log != undefined ? param.log : true;
+
+  mech = new Mechanical();
+  struct = new Structural();
+
+  catchChange();
+}
 
 // Cerca il cambiamento nella stringa e lo salva
 function catchChange(startNode, map){
@@ -283,8 +290,11 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
   });
 
   editor.on('init', function() {
-    ed = tinyMCE.activeEditor.dom.doc.body;
-    catchChange();
+    initLightly({
+      by: "Francesco Fornari",
+      ed: tinyMCE.activeEditor.dom.doc.body,
+      log: true
+    });
     if (log) console.log("Undo Plugin Ready");
   });
 
