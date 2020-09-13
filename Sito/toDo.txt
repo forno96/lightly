@@ -1,0 +1,18 @@
+FIX/PATCH:
+  DA FARE:
+  - Impara a gestire gli &nbsp; e non prederlo come swap (cancella " d")
+    con funzione ad och per sanificazione di tiny
+  - Metti in modo contiguo le modifiche unite entro 3 sec (parametro globale) con intervallo contiguo
+  - https://jestjs.io/ per i test?
+  - funzione di inizializzazione parametri globali
+
+  FATTO:
+  -
+
+BUG:
+  DA RISOLVERE:
+  - Se faccio invio in fondo alla riga e lo cancello non va
+  - Se faccio molti invio in mezzo a dei <br> non prende la modifica
+
+  RISOLTI:
+  - 
