@@ -16,15 +16,8 @@ async function launchView() {
   await delay(1000);
   while (true) {
     try {
-      stat = {
-        edit: struct.editStruct,
-        lenStk: struct.stackStruct.length,
-        lenRev: struct.revertedStruct.lenght
-      };
-      if (save.edit != stat.edit || save.lenStk != stat.lenStk || save.lenRev != stat.lenRev) {
-        viewStruct("viewStruct", struct.stackStruct, stat);
-        viewStruct("viewRev", struct.revertedStruct, stat);
-      }
+      viewStruct("viewStruct", struct.stackStruct);
+      viewStruct("viewRev", struct.revertedStruct);
     } catch (e) {
       console.log(e);
       await delay(1000);
@@ -33,15 +26,7 @@ async function launchView() {
   }
 }
 
-var save = {
-  edit: 0,
-  lenStk: 0,
-  lenRev: 0
-};
-
-function viewStruct(id, struct, stat) {
-  save = stat;
-
+function viewStruct(id, struct) {
   var newView = createEl("div", "", "", "");
   struct.forEach((st, i) => {
     let el = createEl("p", "tit text-primary", "", "");
