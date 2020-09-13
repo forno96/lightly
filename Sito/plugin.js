@@ -200,8 +200,12 @@ function getAbsPos(sc) {
     walker = stepBackNode(walker);
   }
 
+  // Calcolo end
   let end = 0;
-  walker = stepNextNode(stepNextNode(goToMainNode(endContainer)));
+  // Nel caso in cui ci sono più nodi uguali è necessario controllare tutto l'insieme
+  walker = stepNextNode(goToMainNode(endContainer));
+  while (walker.outerHTML == stepNextNode(walker).outerHTML && !Array.from(ed.parentNode.children).includes(walker)) walker = stepNextNode(walker);
+  walker = stepNextNode(walker);
 
   while (walker != null && !Array.from(ed.parentNode.children).includes(walker)){
     if (walker.outerHTML != undefined) end += walker.outerHTML.length;
