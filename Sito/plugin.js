@@ -272,17 +272,17 @@ function navigateMap(map){
   return {node: node, offset: map.offset};
 }
 
-tinymce.PluginManager.add('UndoStack', function(editor, url) {
+tinymce.PluginManager.add('lightly', function(editor, url) {
   // Disabilita l'undo built in
   editor.on('BeforeAddUndo', function(e) { return false; });
 
-  editor.ui.registry.addButton('Custom-Undo', {
+  editor.ui.registry.addButton('lightly-Undo', {
     text: 'Undo',
     icon: 'undo',
     tooltip: 'Ctrl + Z',
     onAction: function () { revertChange("UNDO"); }
   });
-  editor.ui.registry.addButton('Custom-Redo', {
+  editor.ui.registry.addButton('lightly-Redo', {
     text: 'Redo',
     icon: 'redo',
     tooltip: 'Ctrl + Y',
@@ -295,7 +295,7 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
       ed: tinyMCE.activeEditor.dom.doc.body,
       log: true
     });
-    if (log) console.log("Undo Plugin Ready");
+    if (log) console.log("lightly ready");
   });
 
   // Catturo la posizione del cursore prima dell modifica per controllare le modifiche da quel punto
@@ -326,18 +326,18 @@ tinymce.PluginManager.add('UndoStack', function(editor, url) {
 
   // Da eliminare più avanti
   // Funzione di download/upload per capire la dimensione di mech e dello stato
-  editor.ui.registry.addButton('Download-State', {
+  editor.ui.registry.addButton('lightly-Download', {
     text: 'Download',
     icon: 'action-next',
     onAction: function () {download(editor);}
   });
-  editor.ui.registry.addButton('Upload-State', {
+  editor.ui.registry.addButton('lightly-Upload', {
     text: 'Upload',
     icon: 'action-prev',
     onAction: function () {upload(editor);}
   });
 
-  return { getMetadata: function () { return  { name: "Undo stack plugin" }; }};
+  return { getMetadata: function () { return  { name: "lightly" }; }};
 });
 
 // Per organizzare mech
