@@ -66,7 +66,7 @@ function catchChange(startNode, map){
   else if (oldState == newState && log) { console.log(""); console.log('State Unchanged'); }
   else {
     if (log) console.log("");
-    var pos = getAbsPos(startNode);
+    var pos = startNode==undefined ? {start: 0, end: 0} : getAbsPos(startNode);
     // Controllo da sinistra verso destra
     var start = sanitize(pos.start, Math.min(oldState.length, newState.length));
     while ( start < newState.length && start < oldState.length && newState[start] == oldState[start] ) { start ++; }
@@ -76,18 +76,25 @@ function catchChange(startNode, map){
     var oldEnd = oldState.length -1 - pos.end; // Se c'è stato quache cambiamento allora è probabile che la lunghezza tra le 2 stringhe è cambiata
     while ( newEnd >= start && oldEnd >= start && newState[newEnd] == oldState[oldEnd]) { newEnd --; oldEnd --;}
 
-    if (start < newState.length) { // Se c'è stato un cambiamento
-      var del = oldState.slice(start,oldEnd+1);
-      var add = newState.slice(start,newEnd+1);
-      insItem(add, del, start, map);
+    var del = oldState.slice(start,oldEnd+1);
+    var add = newState.slice(start,newEnd+1);
 
+    if (oldState.length-del.length+add.length != newState.length) {
+      if (log) {
+        console.log(`State chatch error: missing ${Math.abs(oldState.length-del.length+add.length-newState.length)} char`);
+        console.log("DEL: ",del);
+        console.log("ADD: ",add);
+      }
+      catchChange(undefined, map);
+    }
+    else {
+      insItem(add, del, start, map);
       if (log) {
         var range = 30;
         console.log(`State Changed "%c${cutString(del,range)}%c" into "%c${cutString(add,range)}%c" at pos %c${start}`,"color: red","","color: red","","font-weight: bold");
       }
+      oldState = newState;
     }
-
-    oldState = newState;
   }
 }
 

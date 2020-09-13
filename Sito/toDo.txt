@@ -4,13 +4,15 @@ FIX/PATCH:
     con funzione ad och per sanificazione di tiny
   - Metti in modo contiguo le modifiche unite entro 3 sec (parametro globale) con intervallo contiguo
   - https://jestjs.io/ per i test?
+  - Se non hai trovato la modifica rilancia la ricerca con tutto
 
   FATTO:
   - Funzione di inizializzazione parametri globali
 
 BUG:
   DA RISOLVERE:
-  - Se faccio invio in fondo alla riga e lo cancello non va
+  3.
 
   RISOLTI:
-  - Se faccio molti invio in mezzo a dei <br> non prende la modifica
+  1. Se faccio molti invio in mezzo a dei <br> non prende la modifica
+  2. Se faccio invio in fondo alla riga e lo cancello non va
