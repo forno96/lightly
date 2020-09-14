@@ -1,16 +1,14 @@
 class Mechanical {
   constructor(){ this.editMech = 0; }
 
-  createItem(op, pos, content, by, newMap, oldMap){
+  createItem(op, pos, content, by){
     var item = {
       id: this.editMech,
       op: op,
       pos: pos,
       content: content,
       by: by,
-      timestamp: getTime(),
-      newMap: newMap, // Serve per l'undo per mettere il cursore esattamente dove stava
-      oldMap: oldMap  // Serve per l'undo per mettere il cursore esattamente dove stava
+      timestamp: getTime()
     };
     this.editMech++;
 
@@ -25,13 +23,15 @@ class Structural {
     this.revertedStruct = [];
   }
 
-  createItem(op, by, items){
+  createItem(op, by, items, newMap, oldMap){
     var item = {
       id: this.editStruct,
       op: op,
       by: by,
       timestamp: getTime(),
-      items: items
+      items: items,
+      newMap: newMap, // Serve per l'undo per mettere il cursore esattamente dove stava
+      oldMap: oldMap  // Serve per l'undo per mettere il cursore esattamente dove stava
     };
     this.editStruct++;
 
@@ -63,7 +63,7 @@ function initLightly(param){
 }
 
 // Cerca il cambiamento nella stringa e lo salva
-function catchChange(startNode, map){
+function catchChange(startNode, oldMap){
   newState = catchState();
   if (oldState == undefined) oldState = newState;
   else if (oldState == newState && log) { console.log(""); console.log('State Unchanged'); }
@@ -88,10 +88,10 @@ function catchChange(startNode, map){
         console.log("DEL: ",del);
         console.log("ADD: ",add);
       }
-      catchChange(undefined, map);
+      catchChange(undefined, oldMap);
     }
     else {
-      insItem(add, del, start, map);
+      insItem(add, del, start, oldMap);
       if (log) {
         var range = 30;
         console.log(`State Changed "%c${cutString(del,range)}%c" into "%c${cutString(add,range)}%c" at pos %c${start}`,"color: red","","color: red","","font-weight: bold");
@@ -119,8 +119,8 @@ function insItem(add, del, pos, oldMap){
       tmp.timestamp = getTime();
     }
     else {
-      items[items.length] = mech.createItem("DEL", pos, del, by, newMap, oldMap);
-      struct.createItem("DELETE", by, items);
+      items[items.length] = mech.createItem("DEL", pos, del, by);
+      struct.createItem("DELETE", by, items, newMap, oldMap);
     }
   }
   else if (add != "" && del == "") {
@@ -131,41 +131,41 @@ function insItem(add, del, pos, oldMap){
       tmp.timestamp = getTime();
     }
     else {
-      items[items.length] = mech.createItem("INS", pos, add, by, newMap, oldMap);
-      struct.createItem("INSERT", by, items);
+      items[items.length] = mech.createItem("INS", pos, add, by);
+      struct.createItem("INSERT", by, items, newMap, oldMap);
     }
   }
   else if (a.slice(2,a.length-2).join("") == del) {
-    items[items.length] = mech.createItem("INS", pos, a[1], by, newMap, oldMap);
+    items[items.length] = mech.createItem("INS", pos, a[1], by);
     items[items.length] = mech.createItem("INS", pos+a.slice(0,a.length-2).join("").length, a[a.length-2], by, newMap, oldMap);
-    struct.createItem("WRAP", by, items);
+    struct.createItem("WRAP", by, items, newMap, oldMap);
   }
   else if (a.slice(2,a.length-2).join("") == "<"+del+">") {
-    items[items.length] = mech.createItem("INS", pos-1, "<"+a[1], by, newMap, oldMap);
+    items[items.length] = mech.createItem("INS", pos-1, "<"+a[1], by);
     items[items.length] = mech.createItem("INS", pos+a.slice(0,a.length-2).join("").length, a[a.length-2]+">", by, newMap, oldMap);
-    struct.createItem("WRAP", by, items);
+    struct.createItem("WRAP", by, items, newMap, oldMap);
   }
   else if (d.slice(2,d.length-2).join("") == add) {
-    items[items.length] = mech.createItem("DEL", pos, d[1], by, newMap, oldMap);
+    items[items.length] = mech.createItem("DEL", pos, d[1], by);
     items[items.length] = mech.createItem("DEL", pos+d.slice(2,d.length-2).join("").length, d[d.length-2], by, newMap, oldMap);
-    struct.createItem("UNWRAP", by, items);
+    struct.createItem("UNWRAP", by, items, newMap, oldMap);
   }
   else if (d.slice(2,d.length-2).join("") == "<"+add+">") { // Da finire
-    items[items.length] = mech.createItem("DEL", pos-1, "<"+d[1], by, newMap, oldMap);
+    items[items.length] = mech.createItem("DEL", pos-1, "<"+d[1], by);
     items[items.length] = mech.createItem("DEL", pos+d.slice(2,d.length-2).join("").length-1, d[d.length-2]+">", by, newMap, oldMap);
-    struct.createItem("UNWRAP", by, items);
+    struct.createItem("UNWRAP", by, items, newMap, oldMap);
   }
   else if (a.length>5 && d.length>5 &&  a.slice(2,a.length-2).join("") == d.slice(2,d.length-2).join("")) {
-    items[items.length] = mech.createItem("DEL", pos, d[1], by, newMap, oldMap);
+    items[items.length] = mech.createItem("DEL", pos, d[1], by);
     items[items.length] = mech.createItem("DEL", pos+d.slice(2,d.length-2).join("").length, d[d.length-2], by, newMap, oldMap);
-    items[items.length] = mech.createItem("INS", pos, a[1], by, newMap, oldMap);
+    items[items.length] = mech.createItem("INS", pos, a[1], by);
     items[items.length] = mech.createItem("INS", pos+a.slice(0,a.length-2).join("").length, a[a.length-2], by, newMap, oldMap);
-    struct.createItem("REPLACE", by, items);
+    struct.createItem("REPLACE", by, items, newMap, oldMap);
   }
   else {
-    items[items.length] = mech.createItem("DEL", pos, del, by, newMap, oldMap);
-    items[items.length] = mech.createItem("INS", pos, add, by, newMap, oldMap);
-    struct.createItem("CHANGE", by, items);
+    items[items.length] = mech.createItem("DEL", pos, del, by);
+    items[items.length] = mech.createItem("INS", pos, add, by);
+    struct.createItem("CHANGE", by, items, newMap, oldMap);
   }
 
   if (log) console.log("ADD:",a,"\nDEL:",d,`\nChange type: ${struct.stackStruct[struct.stackStruct.length-1].op}`);
@@ -184,9 +184,8 @@ function revertChange(type) {
 
     var range = 30; // Per il log
 
-    var items;
-    if (type == "UNDO") items = struct.remItem().items;
-    else items = struct.remRevert().items;
+    var st = type == "UNDO" ? struct.remItem() : struct.remRevert();
+    var items = st.items;
 
     for (var i = 0; i < items.length; i++) {
       let index = type == "UNDO" ? items.length-1-i : i; // Il verso di lettura dipende se è un undo <- o un redo ->
@@ -206,8 +205,7 @@ function revertChange(type) {
     loadState(state);
 
     // Se è Undo il primo elemento letto è l'ultimo dell'array altrimenti è il primo
-    var rightMap = type == "UNDO" ? items[items.length-1].oldMap : items[0].newMap;
-    setCursorPos(rightMap);
+    setCursorPos(type == "UNDO" ? st.oldMap : st.newMap);
   }
 }
 
