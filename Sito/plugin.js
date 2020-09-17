@@ -39,6 +39,21 @@ class Structural {
     return item;
   }
 
+  updateItem(pos, content, newMap){
+    var st = this.lastItem();
+    var item = st.items[0];
+
+    st.newMap = newMap;
+    item.timestamp = getTime();
+    if (st.op == "DELETE"){
+      item.pos = pos;
+      item.content = content + item.content;
+    }
+    else if (st.op == "INSERT"){
+      item.content = item.content + content;
+    }
+  }
+
   remItem() { return pop_move(this.stackStruct, this.revertedStruct); }
   remRevert() { return pop_move(this.revertedStruct, this.stackStruct); }
 
@@ -53,7 +68,7 @@ var oldState, ed, by, log, interval, struct, mech;
 function initLightly(param){
   ed = param.ed != undefined ? param.ed : tinyMCE.activeEditor.dom.doc.body;
   by = param.by != undefined ? param.by : "";
-  log = param.log != undefined ? param.log : true;
+  log = param.log != undefined ? param.log : false;
   interval = param.interval != undefined ? param.interval : 3;
 
   mech = new Mechanical();
@@ -71,7 +86,7 @@ function catchChange(startNode, oldMap){
     if (log) console.log("");
     var pos = startNode==undefined ? {start: 0, end: 0} : getAbsPos(startNode);
     // Controllo da sinistra verso destra
-    var start = sanitize(pos.start, Math.min(oldState.length, newState.length));
+    var start = sanitizeNum(pos.start, Math.min(oldState.length, newState.length));
     while ( start < newState.length && start < oldState.length && newState[start] == oldState[start] ) { start ++; }
 
     // Controllo da destra verso sinistra
@@ -109,14 +124,11 @@ function insItem(add, del, pos, oldMap){
   var d = del.split(/(<[^<>]*>|[^<>]*>|<[^<>]*)/);
 
   var newMap = createMap();
+  var st = struct.lastItem();
 
   if (del != "" && add == "") {
-    var tmp = struct.lastItem();
-    if (tmp != undefined && tmp.op == "DELETE" && tmp.items[0].pos-del.length == pos && compareTime(tmp.items[0].timestamp, getTime(), interval)) {
-      tmp = tmp.items[0];
-      tmp.pos = pos;
-      tmp.content = del + tmp.content;
-      tmp.timestamp = getTime();
+    if (st != undefined && st.op == "DELETE" && st.items[0].pos-del.length == pos && compareTime(st.items[0].timestamp, getTime(), interval)) {
+      struct.updateItem(pos, del, newMap);
     }
     else {
       items[items.length] = mech.createItem("DEL", pos, del, by);
@@ -124,11 +136,8 @@ function insItem(add, del, pos, oldMap){
     }
   }
   else if (add != "" && del == "") {
-    var tmp = struct.lastItem();
-    if (tmp != undefined && tmp.op == "INSERT" && tmp.items[0].pos+tmp.items[0].content.length == pos && compareTime(tmp.items[0].timestamp, getTime(), interval)) {
-      tmp = tmp.items[0];
-      tmp.content = tmp.content + add;
-      tmp.timestamp = getTime();
+    if (st != undefined && st.op == "INSERT" && st.items[0].pos+st.items[0].content.length == pos && compareTime(st.items[0].timestamp, getTime(), interval)) {
+      struct.updateItem(pos, add, newMap);
     }
     else {
       items[items.length] = mech.createItem("INS", pos, add, by);
@@ -241,7 +250,7 @@ function getAbsPos(sc) {
   if (log) {
     var rng = 20;
     var state = catchState(), stateLen = state.length-1, endP =  stateLen - end + 1;
-    console.log(`Range is from pos %c${start}%c to %c${endP}%c\n${state.slice(sanitize(start-rng, stateLen), start)}%c${state.slice(start, endP)}%c${state.slice(endP, sanitize(endP+rng,stateLen))}`,"font-weight: bold","","font-weight: bold","","color: red","");
+    console.log(`Range is from pos %c${start}%c to %c${endP}%c\n${state.slice(sanitizeNum(start-rng, stateLen), start)}%c${state.slice(start, endP)}%c${state.slice(endP, sanitizeNum(endP+rng,stateLen))}`,"font-weight: bold","","font-weight: bold","","color: red","");
   }
 
   return ({ start: start, end: end });
@@ -258,8 +267,8 @@ function setCursorPos(map){
   var eSize = end.node.innerText != null ? end.node.innerText.length : end.node.valueOf().length;
 
   r = range();
-  r.setStart(start.node, sanitize(start.offset, sSize));
-  r.setEnd(end.node, sanitize(end.offset, eSize));
+  r.setStart(start.node, sanitizeNum(start.offset, sSize));
+  r.setEnd(end.node, sanitizeNum(end.offset, eSize));
 }
 
 // Map serve per ottenere la posizione dei nodi
@@ -291,7 +300,7 @@ function navigateMap(map){
   var node = ed;
   var flag = true;
   while (map.child != null && flag){
-    let offset = sanitize(map.offset, node.childNodes.length-1);
+    let offset = sanitizeNum(map.offset, node.childNodes.length-1);
     if (node.childNodes[offset] == undefined) flag = false;
     else {
       node = node.childNodes[offset];
@@ -335,8 +344,8 @@ tinymce.PluginManager.add('lightly', function(editor, url) {
   }
   function lunchCatchChange(){
     // Passo il salvataggio della mappa a catchChange così si può posiszionare il cursore nella pos vecchia col revert
-    catchChange(navigateMap(saveMap.map.start).node, saveMap.map);
     saveMap.used = true;
+    catchChange(navigateMap(saveMap.map.start).node, saveMap.map);
   }
 
   editor.on('BeforeExecCommand', function (){ save(); });
@@ -372,7 +381,7 @@ tinymce.PluginManager.add('lightly', function(editor, url) {
 
 // Funzioni di supporto
 
-//function sanitizeID(value){ return "0".repeat( sanitize(5-value.toString().length, 5) ) + value; }
+//function sanitizeID(value){ return "0".repeat( sanitizeNum(5-value.toString().length, 5) ) + value; }
 function getTime(){ return (new Date().toJSON()); }
 function compareTime(oldTime, newTime, interval) {
   var tmp = new Date(oldTime);
@@ -380,7 +389,7 @@ function compareTime(oldTime, newTime, interval) {
   return tmp.toJSON() >= newTime;
 }
 // Mette num tra 0 e max
-function sanitize(num, max){ if(num<0){num = 0;} else if(num>max){num = max;} return num; }
+function sanitizeNum(num, max){ if(num<0){num = 0;} else if(num>max){num = max;} return num; }
 
 // Ottieni i nodi principali
 function isMainNode(node){ return(Array.from(tinyMCE.activeEditor.dom.doc.body.children).includes(node)); }
