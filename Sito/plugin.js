@@ -49,19 +49,33 @@ class Structural {
     return item;
   }
 
-  updateItem(pos, content, newMap){
+  updateItem(item){
     var st = this.lastItem();
-    var item = st.items[0];
 
-    st.newMap = newMap;
-    item.timestamp = getTime();
-    if (st.op == "DELETE"){
-      item.pos = pos;
-      item.content = content + item.content;
+    if (st == undefined) return false;
+    if (compareTime(st.items[0].timestamp, getTime(), interval) == false) return false;
+
+    if (st.op == "DELETE" && item.op == "DELETE" && st.items[0].pos-item.items[0].content.length == item.items[0].pos){
+      st.newMap = item.items[0].newMap;
+      st.items[0].timestamp = getTime();
+      st.items[0].pos = item.items[0].pos;
+      st.items[0].content = item.items[0].content + st.items[0].content;
+      return true;
     }
-    else if (st.op == "INSERT"){
-      item.content = item.content + content;
+    else if (st.op == "INSERT" && item.op == "INSERT" && st.items[0].pos+st.items[0].content.length == item.items[0].pos){
+      st.newMap = item.items[0].newMap;
+      st.items[0].timestamp = getTime();
+      st.items[0].content = st.items[0].content + item.items[0].content;
+      return true;
     }
+    else if (st.op == "CHANGE" && item.op == "INSERT" && st.items[1].pos+st.items[1].content.length == item.items[0].pos){
+      st.newMap = item.items[0].newMap;
+      st.items[1].timestamp = getTime();
+      st.items[1].content = st.items[1].content + item.items[0].content;
+      return true;
+    }
+
+    return false;
   }
 
   updateTimes(mode){
@@ -90,13 +104,14 @@ class Structural {
 }
 
 // Dichiaro le variabili globali
-var oldState, ed, by, log, interval, struct, mech;
+var oldState, ed, by, log, interval, struct, mech, convertion;
 // Funzione di inizializzazione
 function initLightly(param){
   ed = param.ed != undefined ? param.ed : tinyMCE.activeEditor.dom.doc.body;
   by = param.by != undefined ? param.by : "";
   log = param.log != undefined ? param.log : false;
   interval = param.interval != undefined ? param.interval : 3;
+  convertion = param.convertion != undefined ? param.convertion : [];
 
   mech = new Mechanical();
   struct = new Structural();
@@ -154,22 +169,12 @@ function insItem(add, del, pos, oldMap){
   var st = struct.lastItem();
 
   if (del != "" && add == "") {
-    if (st != undefined && st.op == "DELETE" && st.items[0].pos-del.length == pos && compareTime(st.items[0].timestamp, getTime(), interval)) {
-      struct.updateItem(pos, del, newMap);
-    }
-    else {
-      items[items.length] = mech.createItem("DEL", pos, del, by);
-      struct.createItem("DELETE", by, items, newMap, oldMap);
-    }
+    items[items.length] = mech.createItem("DEL", pos, del, by);
+    struct.createItem("DELETE", by, items, newMap, oldMap);
   }
   else if (add != "" && del == "") {
-    if (st != undefined && st.op == "INSERT" && st.items[0].pos+st.items[0].content.length == pos && compareTime(st.items[0].timestamp, getTime(), interval)) {
-      struct.updateItem(pos, add, newMap);
-    }
-    else {
-      items[items.length] = mech.createItem("INS", pos, add, by);
-      struct.createItem("INSERT", by, items, newMap, oldMap);
-    }
+    items[items.length] = mech.createItem("INS", pos, add, by);
+    struct.createItem("INSERT", by, items, newMap, oldMap);
   }
   else if (a.slice(2,a.length-2).join("") == del) {
     items[items.length] = mech.createItem("INS", pos, a[1], by);
@@ -204,8 +209,7 @@ function insItem(add, del, pos, oldMap){
     struct.createItem("CHANGE", by, items, newMap, oldMap);
   }
 
-  if (log) console.log("ADD:",a,"\nDEL:",d,`\nChange type: ${struct.stackStruct[struct.stackStruct.length-1].op}`);
-
+  if (log) console.log("ADD:",a,"\nDEL:",d,`\nChange type: ${struct.lastItem().op}`);
 }
 
 // Se viende scatenato prende le ultime due modifiche scritte nella pila scelta in base al tipo (UNDO o REUNDO) e le applica
@@ -375,11 +379,16 @@ tinymce.PluginManager.add('lightly', function(editor, url) {
   });
 
   editor.on('init', function() {
+    var convertion = [
+      // ogni &nbsp; va messo come spazio
+      { original: /&nbsp;/g, new:" "}
+    ];
     initLightly({
       by: "Francesco Fornari",
       ed: tinyMCE.activeEditor.dom.doc.body,
       interval: 3,
-      log: true
+      log: true,
+      convertion: convertion
     });
     if (log) console.log("lightly ready");
   });
