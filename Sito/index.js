@@ -16,8 +16,8 @@ async function launchView() {
   await delay(1000);
   while (true) {
     try {
-      viewStruct("viewStruct", struct.stackStruct);
-      viewStruct("viewRev", struct.revertedStruct);
+      viewStruct("viewStruct", getStackStruct());
+      viewStruct("viewRev", getRevertedStruct());
     } catch (e) {
       console.log(e);
       await delay(1000);
@@ -26,14 +26,29 @@ async function launchView() {
   }
 }
 
-function viewStruct(id, struct) {
+time = {
+  viewStruct: "",
+  viewRev: ""
+};
+
+function viewStruct(id, obj) {
+  /*if (id == "viewRev") {
+    console.log(time[id], obj.time);
+    console.log(obj);
+  }*/
+  if (time[id] != "" && time[id] >= obj.time) return false;
+
+
+
+  time[id] = obj.time;
+
   var newView = createEl("div", "", "", "");
-  struct.forEach((st, i) => {
+  obj.list.forEach((st, i) => {
     let el = createEl("p", "tit text-primary", "", "");
     el.appendChild(createEl("span", "text-dark", "", `${st.id}: ${sanit(st.op)}`))
     st.items.forEach((mec, i) => {
       let content = mec.content;
-      if (content == "&nbsp;" || content == " ") content = "SPACE";
+      //if (/ +/.test(content)) content = "SPACE";
 
       nextEl = createEl("p", "int " + (mec.op == "INS" ? "text-success" : "text-danger"), "", "");
       cn = createEl("span", "text-dark text-truncate", "", content);

@@ -19,6 +19,10 @@ class Mechanical {
 class Structural {
   constructor(){
     this.editStruct = 0;
+    this.lastUpdate = {
+      stack : getTime(),
+      reverted : getTime()
+    };
     this.stackStruct = [];
     this.revertedStruct = [];
   }
@@ -35,7 +39,13 @@ class Structural {
     };
     this.editStruct++;
 
-    this.stackStruct.push(item);
+    if (this.updateItem(item) == false) this.stackStruct.push(item);
+
+    // Se si fanno delle modifiche la coda con gli undo annulati va svuotata
+    if (this.emptyRevertedStruct()) this.updateTimes(2);
+    else this.updateTimes(1);
+  }
+
     return item;
   }
 
@@ -54,12 +64,29 @@ class Structural {
     }
   }
 
-  remItem() { return pop_move(this.stackStruct, this.revertedStruct); }
-  remRevert() { return pop_move(this.revertedStruct, this.stackStruct); }
+  updateTimes(mode){
+    this.lastUpdate.stack = getTime();
+    if (mode>=2) this.lastUpdate.reverted = getTime();
+  }
+
+  remItem() {
+    this.updateTimes(2);
+    return pop_move(this.stackStruct, this.revertedStruct);
+  }
+  remRevert() {
+    this.updateTimes(2);
+    return pop_move(this.revertedStruct, this.stackStruct);
+  }
 
   lastItem() { return this.stackStruct[this.stackStruct.length-1]; }
 
-  emptyRevertedStruct() { this.revertedStruct = []; }
+  emptyRevertedStruct() {
+    if (this.revertedStruct == []) return false;
+    else {
+      this.revertedStruct = [];
+      return true;
+    }
+  }
 }
 
 // Dichiaro le variabili globali
@@ -179,7 +206,6 @@ function insItem(add, del, pos, oldMap){
 
   if (log) console.log("ADD:",a,"\nDEL:",d,`\nChange type: ${struct.stackStruct[struct.stackStruct.length-1].op}`);
 
-  struct.emptyRevertedStruct(); // Se si fanno delle modifiche la coda con gli undo annulati va svuotata
 }
 
 // Se viende scatenato prende le ultime due modifiche scritte nella pila scelta in base al tipo (UNDO o REUNDO) e le applica
@@ -310,6 +336,27 @@ function navigateMap(map){
   return {node: node, offset: map.offset};
 }
 
+var stack = {
+  stack : { list: [], time: ""},
+  reverted : { list: [], time: ""}
+};
+function getStackStruct(){ return sanitizeTINY("stack", struct.stackStruct);}
+function getRevertedStruct(){ return sanitizeTINY("reverted", struct.revertedStruct);}
+function sanitizeTINY(op, st){
+  if (stack[op].time=="" || struct.lastUpdate[op] > stack[op].time){
+    stack[op].time = struct.lastUpdate[op];
+    stack[op].list = JSON.parse(JSON.stringify(st));
+    convertion.forEach((rule, r) => {
+      stack[op].list.forEach((item, i) => {
+        item.items.forEach((mec, m) => {
+          mec.content = mec.content.replace(rule.original, rule.new);
+        });
+      });
+    });
+  }
+  return stack[op];
+}
+
 tinymce.PluginManager.add('lightly', function(editor, url) {
   // Disabilita l'undo built in
   editor.on('BeforeAddUndo', function(e) { return false; });
@@ -382,8 +429,8 @@ tinymce.PluginManager.add('lightly', function(editor, url) {
 // Funzioni di supporto
 
 //function sanitizeID(value){ return "0".repeat( sanitizeNum(5-value.toString().length, 5) ) + value; }
-function getTime(){ return (new Date().toJSON()); }
-function compareTime(oldTime, newTime, interval) {
+function getTime (){ return (new Date().toJSON()); }
+function compareTime (oldTime, newTime, interval) { // torna true se oldTime è dentro il interval di newTime
   var tmp = new Date(oldTime);
   tmp.setSeconds(tmp.getSeconds() + interval);
   return tmp.toJSON() >= newTime;
