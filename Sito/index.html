@@ -7,52 +7,15 @@
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
   <link rel="stylesheet" href="./index.css">
 
-  <script src="./index.js" onload="launchView()"></script>
-
   <link rel="shortcut icon" href="./favicon.ico" type="image/x-icon">
   <link rel="icon" href="./favicon.ico" type="image/x-icon">
-
-  <script src="./tinymce/js/tinymce/tinymce.min.js" referrerpolicy="origin"></script>
-  <script type="text/javascript">
-    tinymce.PluginManager.load('lightly', '../plugin.js');
-    tinymce.init({
-      selector: 'textarea',
-      plugins: '-lightly',   // Don't try to load it again
-      toolbar: 'lightly-Undo lightly-Redo lightly-Download lightly-Upload a11ycheck addcomment showcomments casechange checklist code formatpainter insertfile pageembed permanentpen table',
-      toolbar_drawer: 'floating',
-      tinycomments_mode: 'embedded',
-      tinycomments_author: 'Author name',
-      height: "800"
-    });
-  </script>
 </head>
 <body class="bg-light">
-  <h1 class="text-center text-primary font-weight-light pt-3"><i class="fas fa-rocket fa-flip-horizontal"></i> lightly <i class="fas fa-rocket"></i></h1>
+  <h1 class="text-center text-primary display-4 pt-3 text-truncate">Progetto di tesi di Francesco Fornari</h1>
   <div class="container-fluid">
-    <div class="row">
-      <div class="col-4">
-        <h3 class="text-center text-truncate">Pila delle modifiche</h3>
-        <div class="bg-white border border-primary rounded mt-2" style="height:100%; max-height: 800px;">
-          <div class="row pt-2">
-            <div class="col-6 pl-2 pr-1">
-              <p class="text-center text-truncate">Modifiche</p>
-              <div class="scroll text-truncate" id="viewStruct"></div>
-            </div>
-            <div class="col-6 pl-0 pr-4">
-              <p class="text-center text-truncate">Annullate</p>
-              <div class="scroll text-truncate" id="viewRev"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="col">
-        <h3 class="text-center text-truncate">tinyMCE</h3>
-        <div class="bg-white border border-primary rounded" style="">
-          <textarea>
-            Progetto di tesi di Francesco Fornari
-          </textarea>
-        </div>
-      </div>
+    <div class="row mt-5 justify-content-center">
+      <a href="./lightly/index.html" role="button" class="btn btn-outline-primary m-2 btn-lg">Versione Lightly</a>
+      <a href="./vanilla/index.html" role="button" class="btn btn-outline-primary m-2 btn-lg">Versione Vanilla</a>
     </div>
   </div>
 
