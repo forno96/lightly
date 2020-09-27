@@ -55,20 +55,20 @@ class Structural {
     if (st == undefined) return false;
     if (compareTime(st.items[0].timestamp, getTime(), interval) == false) return false;
 
-    if (st.op == "DELETE" && item.op == "DELETE" && st.items[0].pos-item.items[0].content.length == item.items[0].pos){
+    if (st.op == "TEXTDELETE" && item.op == "TEXTDELETE" && st.items[0].pos-item.items[0].content.length == item.items[0].pos){
       st.newMap = item.items[0].newMap;
       st.items[0].timestamp = getTime();
       st.items[0].pos = item.items[0].pos;
       st.items[0].content = item.items[0].content + st.items[0].content;
       return true;
     }
-    else if (st.op == "INSERT" && item.op == "INSERT" && st.items[0].pos+st.items[0].content.length == item.items[0].pos){
+    else if (st.op == "TEXTINSERT" && item.op == "TEXTINSERT" && st.items[0].pos+st.items[0].content.length == item.items[0].pos){
       st.newMap = item.items[0].newMap;
       st.items[0].timestamp = getTime();
       st.items[0].content = st.items[0].content + item.items[0].content;
       return true;
     }
-    else if (st.op == "CHANGE" && item.op == "INSERT" && st.items[1].pos+st.items[1].content.length == item.items[0].pos){
+    else if (st.op == "CHANGE" && item.op == "TEXTINSERT" && st.items[1].pos+st.items[1].content.length == item.items[0].pos){
       st.newMap = item.items[0].newMap;
       st.items[1].timestamp = getTime();
       st.items[1].content = st.items[1].content + item.items[0].content;
@@ -168,13 +168,17 @@ function insItem(add, del, pos, oldMap){
   var newMap = createMap();
   var st = struct.lastItem();
 
+  console.log(a,d,add, del)
+
   if (del != "" && add == "") {
     items[items.length] = mech.createItem("DEL", pos, del, by);
-    struct.createItem("DELETE", by, items, newMap, oldMap);
+    if (d.length == 1) struct.createItem("TEXTDELETE", by, items, newMap, oldMap);
+    else               struct.createItem("DELETE", by, items, newMap, oldMap);
   }
   else if (add != "" && del == "") {
     items[items.length] = mech.createItem("INS", pos, add, by);
-    struct.createItem("INSERT", by, items, newMap, oldMap);
+    if (a.length == 1) struct.createItem("TEXTINSERT", by, items, newMap, oldMap);
+    else               struct.createItem("INSERT", by, items, newMap, oldMap);
   }
   else if (a.slice(2,a.length-2).join("") == del) {
     items[items.length] = mech.createItem("INS", pos, a[1], by);
@@ -196,7 +200,7 @@ function insItem(add, del, pos, oldMap){
     items[items.length] = mech.createItem("DEL", pos+d.slice(2,d.length-2).join("").length-1, d[d.length-2]+">", by, newMap, oldMap);
     struct.createItem("UNWRAP", by, items, newMap, oldMap);
   }
-  else if (a.length>5 && d.length>5 &&  a.slice(2,a.length-2).join("") == d.slice(2,d.length-2).join("")) {
+  else if (a.length>=5 && d.length>=5 &&  a.slice(2,a.length-2).join("") == d.slice(2,d.length-2).join("")) {
     items[items.length] = mech.createItem("DEL", pos, d[1], by);
     items[items.length] = mech.createItem("DEL", pos+d.slice(2,d.length-2).join("").length, d[d.length-2], by, newMap, oldMap);
     items[items.length] = mech.createItem("INS", pos, a[1], by);
@@ -206,7 +210,8 @@ function insItem(add, del, pos, oldMap){
   else {
     items[items.length] = mech.createItem("DEL", pos, del, by);
     items[items.length] = mech.createItem("INS", pos, add, by);
-    struct.createItem("CHANGE", by, items, newMap, oldMap);
+    if (a.length == 1 && d.length == 1) struct.createItem("TEXTREPLACE", by, items, newMap, oldMap);
+    else                                struct.createItem("CHANGE", by, items, newMap, oldMap);
   }
 
   if (log) console.log("ADD:",a,"\nDEL:",d,`\nChange type: ${struct.lastItem().op}`);
