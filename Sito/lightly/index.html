@@ -15,14 +15,15 @@
   <script src="../tinymce/js/tinymce/tinymce.min.js" referrerpolicy="origin"></script>
   <script type="text/javascript">
     tinymce.PluginManager.load('lightly', '../../plugin.js');
+    tinymce.PluginManager.load('test', '../../testPlugin.js');
     tinymce.init({
       selector: 'textarea',
-      plugins: '-lightly',   // Don't try to load it again
-      toolbar: 'lightly-Undo lightly-Redo lightly-Download lightly-Upload a11ycheck addcomment showcomments casechange checklist code formatpainter insertfile pageembed permanentpen table',
+      plugins: 'lightly test',   // Don't try to load it again
+      toolbar: 'lightly-Undo lightly-Redo lightly-Download lightly-Upload launch_test a11ycheck addcomment showcomments casechange checklist code formatpainter insertfile pageembed permanentpen table',
       toolbar_drawer: 'floating',
       tinycomments_mode: 'embedded',
       tinycomments_author: 'Author name',
-      height: "800"
+      height: "760"
     });
   </script>
 
@@ -35,7 +36,7 @@
     <div class="row">
       <div class="col-4">
         <h3 class="text-center text-truncate">Pila delle modifiche</h3>
-        <div class="bg-white border border-primary rounded mt-2" style="height:100%; max-height: 800px;">
+        <div class="bg-white border border-primary rounded mt-2" style="height:100%; max-height: 760px;">
           <div class="row pt-2">
             <div class="col-6 pl-2 pr-1">
               <p class="text-center text-truncate">Modifiche</p>
@@ -51,9 +52,7 @@
       <div class="col">
         <h3 class="text-center text-truncate">TinyMCE</h3>
         <div class="bg-white border border-primary rounded" style="">
-          <textarea>
-            Progetto di tesi di Francesco Fornari
-          </textarea>
+          <textarea></textarea>
         </div>
       </div>
     </div>

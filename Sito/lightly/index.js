@@ -7,7 +7,8 @@ function sanit(str) {
 function createEl(tag, cl, id, text) {
   var el = document.createElement(tag);
   if (cl != "") el.className = cl;
-  if (cl != "") el.innerText = text;
+  if (id != "") el.id = id;
+  if (text != "") el.innerText = text;
   return el;
 }
 
@@ -51,7 +52,7 @@ function viewStruct(id, obj) {
       //if (/ +/.test(content)) content = "SPACE";
 
       nextEl = createEl("p", "int " + (mec.op == "INS" ? "text-success" : "text-danger"), "", "");
-      cn = createEl("span", "text-dark text-truncate", "", content);
+      cn = createEl("span", "text-dark text-truncate", "", `"${content}"`);
       cn.setAttribute("data-toggle", "tooltip");
       cn.setAttribute("data-placement", "right");
       cn.setAttribute("title", content);

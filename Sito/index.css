@@ -9,7 +9,7 @@ p {
 .scroll {
   overflow-y: auto;
   overflow-x: hidden;
-  max-height: 744px;
+  max-height: 706px;
   max-width: 100%;
   padding-left: 10px;
   padding-right: 10px;
