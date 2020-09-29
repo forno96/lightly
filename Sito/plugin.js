@@ -46,8 +46,6 @@ class Structural {
     else this.updateTimes(1);
   }
 
-    return item;
-  }
 
   updateItem(item){
     var st = this.lastItem();
@@ -60,18 +58,45 @@ class Structural {
       st.items[0].timestamp = getTime();
       st.items[0].pos = item.items[0].pos;
       st.items[0].content = item.items[0].content + st.items[0].content;
+
+      if (log) console.log("Applied update rule N:1");
+
       return true;
     }
     else if (st.op == "TEXTINSERT" && item.op == "TEXTINSERT" && st.items[0].pos+st.items[0].content.length == item.items[0].pos){
       st.newMap = item.items[0].newMap;
       st.items[0].timestamp = getTime();
       st.items[0].content = st.items[0].content + item.items[0].content;
+
+      if (log) console.log("Applied update rule N:2");
+
       return true;
     }
-    else if (st.op == "CHANGE" && item.op == "TEXTINSERT" && st.items[1].pos+st.items[1].content.length == item.items[0].pos){
+    else if ((st.op == "CHANGE" || st.op == "TEXTREPLACE") && item.op == "TEXTREPLACE" && st.items[1].content.slice(-6) == "&nbsp;" && item.items[0].content.slice(0,6) == "&nbsp;" && item.items[1].content.slice(0,1) == " "){// && item st.items[1].pos+st.items[1].content.length == item.items[0].pos){
+      st.newMap = item.items[0].newMap;
+      st.items[1].timestamp = getTime();
+      st.items[1].content = st.items[1].content.slice(0,-6) + item.items[1].content;
+
+      if (log) console.log("Applied update rule N:3");
+
+      return true;
+    }
+    else if (st.op == "TEXTINSERT" && item.op == "TEXTREPLACE" && item.items[0].content == "&nbsp;" && st.items[0].content.slice(-6)){
+      st.newMap = item.items[0].newMap;
+      st.items[0].timestamp = getTime();
+      st.items[0].content = st.items[0].content.slice(0,-6) + item.items[1].content;
+
+      if (log) console.log("Applied update rule N:4");
+
+      return true;
+    }
+    else if ((st.op == "CHANGE" || st.op == "TEXTREPLACE") && item.op == "TEXTINSERT" && st.items[1].pos+st.items[1].content.length == item.items[0].pos){
       st.newMap = item.items[0].newMap;
       st.items[1].timestamp = getTime();
       st.items[1].content = st.items[1].content + item.items[0].content;
+
+      if (log) console.log("Applied update rule N:5");
+
       return true;
     }
 
@@ -123,7 +148,7 @@ function initLightly(param){
 function catchChange(startNode, oldMap){
   newState = catchState();
   if (oldState == undefined) oldState = newState;
-  else if (oldState == newState && log) { console.log(""); console.log('State Unchanged'); }
+  else if (oldState == newState) { if (log) { console.log(""); console.log('State Unchanged');} }
   else {
     if (log) console.log("");
     var pos = startNode==undefined ? {start: 0, end: 0} : getAbsPos(startNode);
@@ -168,7 +193,6 @@ function insItem(add, del, pos, oldMap){
   var newMap = createMap();
   var st = struct.lastItem();
 
-  console.log(a,d,add, del)
 
   if (del != "" && add == "") {
     items[items.length] = mech.createItem("DEL", pos, del, by);
@@ -384,16 +408,12 @@ tinymce.PluginManager.add('lightly', function(editor, url) {
   });
 
   editor.on('init', function() {
-    var convertion = [
-      // ogni &nbsp; va messo come spazio
-      { original: /&nbsp;/g, new:" "}
-    ];
     initLightly({
       by: "Francesco Fornari",
       ed: tinyMCE.activeEditor.dom.doc.body,
       interval: 3,
       log: true,
-      convertion: convertion
+      convertion: [{ original: /&nbsp;/g, new:" "}]
     });
     if (log) console.log("lightly ready");
   });
@@ -453,7 +473,7 @@ function compareTime (oldTime, newTime, interval) { // torna true se oldTime è 
 function sanitizeNum(num, max){ if(num<0){num = 0;} else if(num>max){num = max;} return num; }
 
 // Ottieni i nodi principali
-function isMainNode(node){ return(Array.from(tinyMCE.activeEditor.dom.doc.body.children).includes(node)); }
+function isMainNode(node){ return(Array.from(tinyMCE.activeEditor.dom.doc.body.children).includes(node) || node == ed); }
 function goToMainNode(node){ while ( !isMainNode(node) ) { node = node.parentNode; } return node; }
 
 // Si muovono sull'albero di body
