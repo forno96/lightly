@@ -53,54 +53,61 @@ class Structural {
     if (st == undefined) return false;
     if (compareTime(st.items[0].timestamp, getTime(), interval) == false) return false;
 
+    var rule;
+
     if (st.op == "TEXTDELETE" && item.op == "TEXTDELETE" && st.items[0].pos-item.items[0].content.length == item.items[0].pos){
       st.newMap = item.items[0].newMap;
       st.items[0].timestamp = getTime();
       st.items[0].pos = item.items[0].pos;
       st.items[0].content = item.items[0].content + st.items[0].content;
 
-      if (log) console.log("Applied update rule N:1");
-
-      return true;
+      rule = 1;
     }
     else if (st.op == "TEXTINSERT" && item.op == "TEXTINSERT" && st.items[0].pos+st.items[0].content.length == item.items[0].pos){
       st.newMap = item.items[0].newMap;
       st.items[0].timestamp = getTime();
       st.items[0].content = st.items[0].content + item.items[0].content;
 
-      if (log) console.log("Applied update rule N:2");
-
-      return true;
+      rule = 2;
     }
     else if ((st.op == "CHANGE" || st.op == "TEXTREPLACE") && item.op == "TEXTREPLACE" && st.items[1].content.slice(-6) == "&nbsp;" && item.items[0].content.slice(0,6) == "&nbsp;" && item.items[1].content.slice(0,1) == " "){// && item st.items[1].pos+st.items[1].content.length == item.items[0].pos){
       st.newMap = item.items[0].newMap;
       st.items[1].timestamp = getTime();
       st.items[1].content = st.items[1].content.slice(0,-6) + item.items[1].content;
 
-      if (log) console.log("Applied update rule N:3");
-
-      return true;
+      rule = 3;
     }
     else if (st.op == "TEXTINSERT" && item.op == "TEXTREPLACE" && item.items[0].content == "&nbsp;" && st.items[0].content.slice(-6)){
       st.newMap = item.items[0].newMap;
       st.items[0].timestamp = getTime();
       st.items[0].content = st.items[0].content.slice(0,-6) + item.items[1].content;
 
-      if (log) console.log("Applied update rule N:4");
-
-      return true;
+      rule = 4;
     }
     else if ((st.op == "CHANGE" || st.op == "TEXTREPLACE") && item.op == "TEXTINSERT" && st.items[1].pos+st.items[1].content.length == item.items[0].pos){
       st.newMap = item.items[0].newMap;
       st.items[1].timestamp = getTime();
       st.items[1].content = st.items[1].content + item.items[0].content;
 
-      if (log) console.log("Applied update rule N:5");
+      rule = 5;
+    }/*
+    else if (st.op == "TEXTREPLACE" && item.op == "TEXTDELETE" && (st.items[1].pos == item.items[0].pos && )){
+      console.log(st.items[0].pos, item.items[0].pos, item.items[0].content.length, st.items[0].pos - item.items[0].content.length == item.items[0].pos );
 
-      return true;
+      st.newMap = item.items[0].newMap;
+      st.items[0].timestamp = getTime();
+      st.items[0].pos = item.items[0].pos;
+      st.items[0].content = item.items[0].content + st.items[0].content;
+
+      rule = 6;
+    }*/
+    else {
+      //console.log(st,item);
+      return false;
     }
 
-    return false;
+    if (log) console.log(`Applied update rule N:${rule}`)
+    return true;
   }
 
   updateTimes(mode){
@@ -412,7 +419,7 @@ tinymce.PluginManager.add('lightly', function(editor, url) {
       by: "Francesco Fornari",
       ed: tinyMCE.activeEditor.dom.doc.body,
       interval: 3,
-      log: true,
+      log: false,
       convertion: [{ original: /&nbsp;/g, new:" "}]
     });
     if (log) console.log("lightly ready");
@@ -535,7 +542,7 @@ function download(editor) {
       }
       var state = catchState();
       dw(`UndoPlugin-${title}-state.txt`, state);
-      dw(`UndoPlugin-${title}-mech.txt`, JSON.stringify(mech));
+      dw(`UndoPlugin-${title}-struct.txt`, JSON.stringify(struct));
       dw(`UndoPlugin-${title}-all.txt`, JSON.stringify({state: state, struct: {edit: struct.editStruct, stack: struct.stackStruct, rev: struct.revertedStruct}}));
       if (log) console.log("File Downloaded");
       api.close();
